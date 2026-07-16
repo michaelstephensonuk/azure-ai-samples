@@ -1,0 +1,61 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build: helloworld.logging",
+      "command": "dotnet",
+      "type": "process",
+      "args": [ "build", "${workspaceFolder}/02.helloworld.logging" ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "build: helloworld.logging.with.message.body",
+      "command": "dotnet",
+      "type": "process",
+      "args": [ "build", "${workspaceFolder}/03.helloworld.logging.with.message.body" ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "build: helloworld.agent",
+      "command": "dotnet",
+      "type": "process",
+      "args": [ "build", "${workspaceFolder}/05.helloworld.agent" ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "build: helloworld.via.api.management",
+      "command": "dotnet",
+      "type": "process",
+      "args": [ "build", "${workspaceFolder}/04.helloworld.via.api.management" ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "build: helloworld.agent.via.api.management",
+      "command": "dotnet",
+      "type": "process",
+      "args": [ "build", "${workspaceFolder}/06.helloworld.agent.via.api.management" ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "build: helloworld",
+      "command": "dotnet",
+      "type": "process",
+      "args": [ "build", "${workspaceFolder}/01.helloworld" ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "build: helloworld.agent.agentsdk",
+      "command": "dotnet",
+      "type": "process",
+      "args": [ "build", "${workspaceFolder}/07.helloworld.agent.agentsdk" ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    }
+  ]
+}

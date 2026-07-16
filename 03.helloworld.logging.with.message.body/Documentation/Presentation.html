@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>03 · Logging with Message Body — EnableSensitiveData</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #0969da; margin-bottom: 14px; }
+  h1 { font-size: 2.7rem; font-weight: 700; line-height: 1.15; color: #111827; }
+  h1 span { color: #cf222e; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 28px; }
+  .subtitle { font-size: 1.1rem; color: #6b7280; margin-top: 16px; max-width: 640px; text-align: center; line-height: 1.6; }
+  p { font-size: 1.05rem; color: #6b7280; line-height: 1.7; max-width: 780px; }
+  .content { width: 100%; max-width: 860px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th { text-align: left; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: #0969da; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 10px 12px; font-size: 0.95rem; border-bottom: 1px solid #f3f4f6; color: #111827; vertical-align: top; }
+  td:first-child { color: #0550ae; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.88rem; white-space: nowrap; }
+  td:last-child { color: #6b7280; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 20px 24px; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.83rem; line-height: 1.65; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw { color: #cf222e; } .type { color: #0550ae; } .str { color: #0a3069; } .cmt { color: #6e7781; font-style: italic; } .mth { color: #8250df; } .var { color: #24292f; } .hi { color: #cf222e; font-weight: 700; }
+
+  .diff-block { display: flex; gap: 16px; width: 100%; }
+  .diff-box { flex: 1; }
+  .diff-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; padding: 6px 12px; border-radius: 6px 6px 0 0; }
+  .diff-label.before { background: #f3f4f6; color: #6b7280; }
+  .diff-label.after { background: #dcfce7; color: #166534; }
+  .diff-box pre { border-radius: 0 8px 8px 8px; margin: 0; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; margin: 3px; }
+  .pill-blue { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-green { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .pill-red { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #0969da; color: #0969da; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #0969da; }
+  .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+
+  .attr-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px; margin-top: 12px; }
+  .attr-card .attr-name { font-family: 'Cascadia Code', monospace; font-size: 0.88rem; color: #0550ae; margin-bottom: 4px; }
+  .attr-card .attr-val { font-size: 0.85rem; color: #6b7280; font-style: italic; }
+  .attr-card.new { border-color: #2da44e; background: #f0fdf4; }
+</style>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false, theme: 'default' });
+  window.__mermaidInit = async () => {
+    await mermaid.run({ querySelector: '.slide.active .mermaid' });
+  };
+</script>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 03 of 06</div>
+    <div class="tag">OpenTelemetry · Sensitive Data · App Insights</div>
+    <h1>Logging with <span>Message Body</span></h1>
+    <p class="subtitle">One line change from sample 02 — <code style="color:#cf222e; font-family:monospace;">EnableSensitiveData = true</code> — causes the actual prompt and response text to appear in every trace span.</p>
+    <div style="margin-top:40px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-red">EnableSensitiveData = true</span>
+      <span class="pill pill-blue">gen_ai.prompt</span>
+      <span class="pill pill-blue">gen_ai.completion</span>
+      <span class="pill pill-green">Custom Properties in App Insights</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: The one change -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">The Change</div>
+      <h2>One flag — two extra span attributes</h2>
+      <div class="diff-block">
+        <div class="diff-box">
+          <div class="diff-label before">02 · helloworld.logging</div>
+          <pre>.<span class="mth">UseOpenTelemetry</span>()</pre>
+        </div>
+        <div class="diff-box">
+          <div class="diff-label after">03 · logging.with.message.body</div>
+          <pre>.<span class="mth">UseOpenTelemetry</span>(configure: o =>
+    o.<span class="hi">EnableSensitiveData</span> = <span class="kw">true</span>)</pre>
+        </div>
+      </div>
+      <p style="margin-top:24px;">With that flag set, the <code style="color:#0550ae; font-family:monospace;">chat gpt-4o</code> dependency span gains two extra attributes on every call:</p>
+      <div style="display:flex; gap:12px; margin-top:12px;">
+        <div class="attr-card new" style="flex:1;">
+          <div class="attr-name">gen_ai.prompt</div>
+          <div class="attr-val">"Hello! Can you tell me one interesting fact about AI?"</div>
+        </div>
+        <div class="attr-card new" style="flex:1;">
+          <div class="attr-name">gen_ai.completion</div>
+          <div class="attr-val">"Sure! One fascinating fact is that..."</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: What remains the same -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Everything Else</div>
+      <h2>What stays the same as sample 02</h2>
+      <table>
+        <thead><tr><th>Aspect</th><th>02 · logging</th><th>03 · with message body</th></tr></thead>
+        <tbody>
+          <tr><td>TracerProvider</td><td colspan="2" style="color:#8b949e;">Identical — Console + Azure Monitor exporters</td></tr>
+          <tr><td>MeterProvider</td><td colspan="2" style="color:#8b949e;">Identical — token usage + duration metrics</td></tr>
+          <tr><td>Root span name</td><td style="color:#8b949e;">run-ai-prompt</td><td style="color:#8b949e;">run-ai-prompt-inc-message-body</td></tr>
+          <tr><td>Model calls</td><td colspan="2" style="color:#8b949e;">Exactly 1 — a single static prompt</td></tr>
+          <tr><td>Prompt/response text in spans</td><td style="color:#cf222e;">Not stored</td><td style="color:#166534;">Stored as span attributes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Production warning -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Production Consideration</div>
+      <h2>When to use — and when not to</h2>
+      <div style="display:flex; gap:16px; margin-bottom:20px;">
+        <div style="flex:1; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:20px;">
+          <div style="color:#166534; font-weight:600; margin-bottom:10px;">✓ Use when…</div>
+          <ul style="color:#8b949e; font-size:0.9rem; line-height:1.8; padding-left:16px;">
+            <li>Debugging prompt quality in development</li>
+            <li>Auditing model responses in a controlled staging env</li>
+            <li>Compliance requirements mandate full prompt logging</li>
+            <li>Data classification allows AI content in telemetry</li>
+          </ul>
+        </div>
+        <div style="flex:1; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:20px;">
+          <div style="color:#991b1b; font-weight:600; margin-bottom:10px;">✗ Avoid when…</div>
+          <ul style="color:#8b949e; font-size:0.9rem; line-height:1.8; padding-left:16px;">
+            <li>Prompts contain PII or customer data</li>
+            <li>Your App Insights workspace has broad access</li>
+            <li>Responses may contain proprietary information</li>
+            <li>Running in production without a data retention policy</li>
+          </ul>
+        </div>
+      </div>
+      <p style="font-size:0.88rem;">App Insights stores these as <strong style="color:#e6edf3;">Custom Properties</strong> on the dependency span — visible to anyone with access to the workspace.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: Sequence diagram -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Message Sequence</div>
+      <h2>Step-by-step call sequence</h2>
+      <div class="mermaid" style="background:#f6f8fa; border:1px solid #d0d7de; border-radius:10px; padding:20px; overflow:auto; max-height:62vh;">
+sequenceDiagram
+    participant App as Console App
+    participant OTel as OpenTelemetry SDK
+    participant AOAI as Azure OpenAI
+    participant Console as Terminal
+    participant AppIns as Application Insights
+
+    App->>OTel: Build TracerProvider &amp; MeterProvider
+    App->>OTel: StartActivity("run-ai-prompt-inc-message-body", Server)
+
+    App->>AOAI: IChatClient.GetResponseAsync(prompt)
+    Note over App,AOAI: UseOpenTelemetry(EnableSensitiveData=true) creates child span<br/>+ gen_ai.prompt = full user message<br/>+ gen_ai.completion = full model response
+    AOAI-->>App: ChatResponse (text + usage)
+
+    App->>OTel: SetTag(ai.input_tokens, ai.output_tokens)
+    App->>OTel: SetStatus(Ok) + EndActivity
+
+    App->>OTel: ForceFlush (traces + metrics)
+    OTel->>Console: Print spans including message body
+    OTel->>AppIns: Export via Azure Monitor exporter
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: App Insights view -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">App Insights Output</div>
+      <h2>What you see in App Insights</h2>
+      <pre style="background:#f6f8fa; border-color:#d0d7de; font-size:0.8rem; color:#24292f;">Transaction Search → Requests
+└── run-ai-prompt-inc-message-body              (kind: Request)
+    └── chat gpt-4o                             (kind: Dependency)
+          gen_ai.system        = openai
+          gen_ai.request.model = gpt-4o
+          gen_ai.usage.input_tokens  = 18
+          gen_ai.usage.output_tokens = 94
+          <span style="color:#3fb950;">gen_ai.prompt     = "Hello! Can you tell me one..."</span>
+          <span style="color:#3fb950;">gen_ai.completion = "Sure! One fascinating fact..."</span>
+
+Metrics → customMetrics
+  gen_ai.client.token.usage         (input + output split)
+  gen_ai.client.operation.duration  (latency in seconds)</pre>
+      <p style="margin-top:16px; font-size:0.88rem;">The green attributes are the <strong style="color:#e6edf3;">new additions</strong> vs sample 02. Open the dependency's Custom Properties panel in App Insights to see the full text.</p>
+    </div>
+  </div>
+
+
+  <!-- SLIDE 7: Table comparison -->
+  <div class="slide">
+    <div class="content" style="max-width:980px;">
+      <div class="tag">App Insights Tables</div>
+      <h2><code style="color:#0550ae;font-size:1.5rem;">dependencies</code> vs <code style="color:#0550ae;font-size:1.5rem;">genAIContent</code></h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Aspect</th>
+            <th>dependencies</th>
+            <th>genAIContent</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Table type</td>
+            <td>Standard App Insights table — always present</td>
+            <td>Dedicated AI telemetry table — emitted by the Semantic Kernel / OTEL AI exporter</td>
+          </tr>
+          <tr>
+            <td>Message content location</td>
+            <td><code style="color:#cf222e;font-family:monospace;font-size:0.82rem;">customDimensions["gen_ai.input.messages"]</code><br/><code style="color:#cf222e;font-family:monospace;font-size:0.82rem;">customDimensions["gen_ai.output.messages"]</code></td>
+            <td>First-class columns: <code style="color:#166534;font-family:monospace;font-size:0.82rem;">inputMessages</code> &amp; <code style="color:#166534;font-family:monospace;font-size:0.82rem;">outputMessages</code></td>
+          </tr>
+          <tr>
+            <td>Model field</td>
+            <td><code style="color:#cf222e;font-family:monospace;font-size:0.82rem;">customDimensions["gen_ai.request.model"]</code></td>
+            <td>Top-level column: <code style="color:#166534;font-family:monospace;font-size:0.82rem;">modelName</code></td>
+          </tr>
+          <tr>
+            <td>HTTP / call metadata</td>
+            <td><code style="color:#0550ae;font-family:monospace;font-size:0.82rem;">duration</code>, <code style="color:#0550ae;font-family:monospace;font-size:0.82rem;">success</code>, <code style="color:#0550ae;font-family:monospace;font-size:0.82rem;">name</code> (e.g. <em>chat gpt-4o</em>) — full HTTP span detail</td>
+            <td style="color:#6b7280;">Not present — AI content only</td>
+          </tr>
+          <tr>
+            <td>KQL complexity to extract content</td>
+            <td style="color:#991b1b;">High — nested <code style="font-family:monospace;font-size:0.82rem;">parse_json(tostring(...))</code> on customDimensions</td>
+            <td style="color:#166534;">Lower — parse directly from <code style="font-family:monospace;font-size:0.82rem;">inputMessages</code> / <code style="font-family:monospace;font-size:0.82rem;">outputMessages</code></td>
+          </tr>
+          <tr>
+            <td>Best used for</td>
+            <td>Call tracing, latency &amp; error analysis</td>
+            <td>Prompt/response auditing, content review, compliance</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top:18px; font-size:0.88rem;">Both tables are populated on the same request — <strong>join on <code style="color:#0550ae;font-family:monospace;">operation_Id</code></strong> to correlate HTTP timing from <code style="font-family:monospace;">dependencies</code> with message content from <code style="font-family:monospace;">genAIContent</code>.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: KQL queries -->
+  <div class="slide">
+    <div class="content" style="max-width:980px;">
+      <div class="tag">Log Analytics / KQL</div>
+      <h2>Querying prompt &amp; response content</h2>
+      <div style="display:flex; gap:14px; flex-direction:column;">
+        <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:14px 18px;">
+          <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#0969da; margin-bottom:8px;">genAIContent — logged prompt &amp; response text (last 1 h)</div>
+          <pre style="margin:0; font-size:0.72rem; line-height:1.5; white-space:pre-wrap;"><span class="kw">genAIContent</span>
+<span class="cmt">| where</span> timestamp > ago(1h)
+<span class="cmt">| extend</span> input_content_  = tostring(parse_json(tostring(parse_json(inputMessages)[0].parts))[0].content)
+<span class="cmt">| extend</span> output_content_ = tostring(parse_json(tostring(parse_json(outputMessages)[0].parts))[0].content)
+<span class="cmt">| extend</span> gen_ai_usage_input_tokens_  = tostring(customDimensions.[<span class="str">"gen_ai.usage.input_tokens"</span>])
+<span class="cmt">| extend</span> gen_ai_usage_output_tokens_ = tostring(customDimensions.[<span class="str">"gen_ai.usage.output_tokens"</span>])
+<span class="cmt">| extend</span> gen_ai_response_model_      = tostring(customDimensions.[<span class="str">"gen_ai.response.model"</span>])
+<span class="cmt">| project</span> timestamp, operation_Id, modelName, gen_ai_usage_input_tokens_,
+          gen_ai_usage_output_tokens_, gen_ai_response_model_, input_content_, output_content_</pre>
+        </div>
+        <div style="display:flex; gap:14px;">
+          <div style="flex:1; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:14px 18px;">
+            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#0969da; margin-bottom:8px;">Dependencies — prompt &amp; response from span attributes</div>
+            <pre style="margin:0; font-size:0.72rem; line-height:1.5; white-space:pre-wrap;"><span class="kw">dependencies</span>
+<span class="cmt">| where</span> timestamp > ago(1h)
+<span class="cmt">| extend</span> input_content_  = tostring(parse_json(tostring(
+    parse_json(tostring(customDimensions.[<span class="str">"gen_ai.input.messages"</span>]))[0].parts))[0].content)
+<span class="cmt">| extend</span> output_content_ = tostring(parse_json(tostring(
+    parse_json(tostring(customDimensions.[<span class="str">"gen_ai.output.messages"</span>]))[0].parts))[0].content)
+<span class="cmt">| extend</span> gen_ai_request_model_ = tostring(customDimensions.[<span class="str">"gen_ai.request.model"</span>])
+<span class="cmt">| project</span> timestamp, operation_Id, name, gen_ai_request_model_,
+          input_content_, output_content_, success, duration</pre>
+          </div>
+          <div style="flex:1; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:14px 18px;">
+            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#0969da; margin-bottom:8px;">Token usage by app &middot; per hour</div>
+            <pre style="margin:0; font-size:0.72rem; line-height:1.5; white-space:pre-wrap;"><span class="kw">customMetrics</span>
+<span class="cmt">| where</span> name == <span class="str">"gen_ai.client.token.usage"</span>
+<span class="cmt">| summarize</span> totalTokens = sum(value)
+    by cloud_RoleName,
+       bin(timestamp, 1h)
+<span class="cmt">| order by</span> timestamp <span class="kw">desc</span></pre>
+            <p style="margin-top:10px; font-size:0.78rem; color:#6b7280;">Full queries in <strong style="color:#111827;">Documentation/ReadMe.Useful.KQL.md</strong></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 7</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let current = 0;
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsEl.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(n, totalSlides - 1));
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.add('active');
+    document.getElementById('counter').textContent = `${current + 1} / ${totalSlides}`;
+    document.getElementById('prev').disabled = current === 0;
+    document.getElementById('next').disabled = current === totalSlides - 1;
+    if (window.__mermaidInit) window.__mermaidInit();
+  }
+  function go(dir) { goTo(current + dir); }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     { e.preventDefault(); go(-1); }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>05 · Hello World Agent — Tool Use &amp; Agentic Loop</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #8250df; margin-bottom: 14px; }
+  h1 { font-size: 2.7rem; font-weight: 700; line-height: 1.15; color: #111827; }
+  h1 span { color: #8250df; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 24px; }
+  .subtitle { font-size: 1.1rem; color: #6b7280; margin-top: 16px; max-width: 640px; text-align: center; line-height: 1.6; }
+  p { font-size: 1rem; color: #6b7280; line-height: 1.7; max-width: 800px; }
+  .content { width: 100%; max-width: 920px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th { text-align: left; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: #8250df; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 9px 12px; font-size: 0.88rem; border-bottom: 1px solid #f3f4f6; color: #111827; vertical-align: top; }
+  td:first-child { color: #0550ae; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.83rem; }
+  td:nth-child(2), td:nth-child(3) { color: #6b7280; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 18px 22px; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.8rem; line-height: 1.65; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw { color: #cf222e; } .type { color: #0550ae; } .str { color: #0a3069; } .cmt { color: #6e7781; font-style: italic; } .mth { color: #8250df; } .var { color: #24292f; } .hi { color: #8250df; font-weight: 700; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; margin: 3px; }
+  .pill-purple { background: #f3e8ff; color: #7c3aed; border: 1px solid #c4b5fd; }
+  .pill-blue { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-green { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #8250df; color: #8250df; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #8250df; }
+  .badge { display: inline-block; background: #f3e8ff; border: 1px solid #c4b5fd; color: #7c3aed; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+
+  .loop-step { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
+  .ls-num { width: 28px; height: 28px; border-radius: 50%; background: #f3e8ff; border: 1px solid #c4b5fd; color: #7c3aed; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ls-text { font-size: 0.9rem; color: #6b7280; line-height: 1.55; }
+  .ls-text strong { color: #111827; }
+
+  .tool-card { flex: 1; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; min-width: 160px; }
+  .tool-card .tc-name { font-family: 'Cascadia Code', monospace; font-size: 0.82rem; color: #8250df; margin-bottom: 5px; }
+  .tool-card .tc-desc { font-size: 0.8rem; color: #6b7280; }
+  .mermaid-wrap { background:#f6f8fa; border:1px solid #d0d7de; border-radius:10px; padding:20px; overflow:auto; max-height:62vh; width:100%; }
+  .screenshot { max-width:100%; max-height:62vh; border-radius:10px; border:1px solid #d0d7de; box-shadow:0 4px 16px rgba(0,0,0,0.08); object-fit:contain; }
+</style>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false, theme: 'default' });
+  window.__mermaidInit = async () => { await mermaid.run({ querySelector: '.slide.active .mermaid' }); };
+</script>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 05 of 06</div>
+    <div class="tag">AI Agent · Tool Use · Agentic Loop</div>
+    <h1>Hello World <span>Agent</span></h1>
+    <p class="subtitle">The model is given tools and autonomously decides which to call, in what order, and how to combine the results. <code style="color:#d2a8ff; font-family:monospace;">UseFunctionInvocation()</code> handles the entire tool-call loop automatically.</p>
+    <div style="margin-top:40px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-purple">UseFunctionInvocation()</span>
+      <span class="pill pill-purple">AIFunctionFactory</span>
+      <span class="pill pill-blue">3–5 model calls per run</span>
+      <span class="pill pill-green">EnableSensitiveData = true</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: vs helloworld.logging -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">What's Different</div>
+      <h2>Agent vs simple chat call</h2>
+      <table>
+        <thead><tr><th>Aspect</th><th>02 · helloworld.logging</th><th>05 · helloworld.agent</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Tools</td>
+            <td style="color:#6b7280;">None</td>
+            <td style="color:#166534; font-weight:600;">GetCurrentDateTime, GetWeather, Calculate</td>
+          </tr>
+          <tr style="background:#faf5ff;">
+            <td>Middleware</td>
+            <td style="color:#6b7280;"><code style="font-family:monospace;">.UseOpenTelemetry()</code></td>
+            <td style="color:#7c3aed; font-weight:600;"><code style="font-family:monospace;">.UseFunctionInvocation()</code> + <code style="font-family:monospace;">.UseOpenTelemetry()</code></td>
+          </tr>
+          <tr>
+            <td>Message history</td>
+            <td style="color:#6b7280;">Single string prompt</td>
+            <td style="color:#166534; font-weight:600;"><code style="font-family:monospace;">List&lt;ChatMessage&gt;</code> with System + User roles</td>
+          </tr>
+          <tr style="background:#faf5ff;">
+            <td>Model calls / run</td>
+            <td style="color:#6b7280;">Exactly 1</td>
+            <td style="color:#7c3aed; font-weight:600;">3–5 (one per tool call + final answer)</td>
+          </tr>
+          <tr>
+            <td>OTel spans</td>
+            <td style="color:#6b7280;">1 child span</td>
+            <td style="color:#166534; font-weight:600;">1 child span <em>per</em> model call</td>
+          </tr>
+          <tr style="background:#faf5ff;">
+            <td>Sensitive data</td>
+            <td style="color:#6b7280;"><code style="font-family:monospace;">false</code></td>
+            <td style="color:#7c3aed; font-weight:600;"><code style="font-family:monospace;">true</code> — tool call JSON visible in traces</td>
+          </tr>
+          <tr>
+            <td>Agent Preview tags</td>
+            <td style="color:#6b7280;">Not present</td>
+            <td style="color:#166534; font-weight:600;">Custom <code style="font-family:monospace;">Client</code> span with <code style="font-family:monospace;">gen_ai.agent.name</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Tools -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Agent Tools</div>
+      <h2>Three tools wired to the model</h2>
+      <div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap;">
+        <div class="tool-card">
+          <div class="tc-name">GetCurrentDateTime</div>
+          <div class="tc-desc">Returns the current UTC date and time as a formatted string</div>
+        </div>
+        <div class="tool-card">
+          <div class="tc-name">GetWeather(city)</div>
+          <div class="tc-desc">Returns hard-coded weather conditions for London, Tokyo, New York, Sydney, Paris</div>
+        </div>
+        <div class="tool-card">
+          <div class="tc-name">Calculate(a, op, b)</div>
+          <div class="tc-desc">Performs + − × ÷ on two numbers and returns the result</div>
+        </div>
+      </div>
+      <pre><span class="type">AIFunction</span> <span class="var">getDateTimeTool</span> = <span class="type">AIFunctionFactory</span>.<span class="mth">Create</span>(
+    () => <span class="type">DateTime</span>.<span class="var">UtcNow</span>.<span class="mth">ToString</span>(<span class="str">"R"</span>),
+    <span class="str">"GetCurrentDateTime"</span>,
+    <span class="str">"Returns the current UTC date and time."</span>);
+
+<span class="kw">var</span> <span class="var">options</span> = <span class="kw">new</span> <span class="type">ChatOptions</span>
+{
+    Tools = <span class="kw">new</span> <span class="type">List</span>&lt;<span class="type">AITool</span>&gt; { <span class="var">getDateTimeTool</span>, <span class="var">getWeatherTool</span>, <span class="var">calculateTool</span> },
+    ToolMode = <span class="type">ChatToolMode</span>.<span class="var">Auto</span>,
+};</pre>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: The loop -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Agentic Loop</div>
+      <h2>How UseFunctionInvocation() works</h2>
+      <div style="max-width:680px; margin:0 auto 24px;">
+        <div class="loop-step"><div class="ls-num">1</div><div class="ls-text"><strong>App sends</strong> user message + tool definitions to the model</div></div>
+        <div class="loop-step"><div class="ls-num">2</div><div class="ls-text">Model responds with a <strong>tool_call</strong> (e.g. GetCurrentDateTime)</div></div>
+        <div class="loop-step"><div class="ls-num">3</div><div class="ls-text"><strong>UseFunctionInvocation middleware</strong> executes the tool locally</div></div>
+        <div class="loop-step"><div class="ls-num">4</div><div class="ls-text">Tool result is <strong>appended to message history</strong> and sent back to the model</div></div>
+        <div class="loop-step"><div class="ls-num">5</div><div class="ls-text">Steps 2–4 repeat until the model returns a <strong>plain text answer</strong></div></div>
+      </div>
+      <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:14px;">
+        <p style="font-size:0.88rem; color:#6b7280;">There is <strong style="color:#111827;">no manual loop code</strong> in Program.cs. <code style="color:#8250df; font-family:monospace;">UseFunctionInvocation()</code> handles all of steps 2–4. <code style="color:#8250df; font-family:monospace;">UseOpenTelemetry()</code> is registered <em>outside</em> it, so it records each individual model call as a separate child span.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Sequence diagram -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Message Sequence</div>
+      <h2>Step-by-step call sequence</h2>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+sequenceDiagram
+    participant App as Console App
+    participant MW as UseFunctionInvocation
+    participant OTel as OpenTelemetry SDK
+    participant AOAI as Azure OpenAI
+    participant AppIns as Application Insights
+
+    App->>OTel: StartActivity("run-ai-agent", Server)
+    App->>OTel: StartActivity("invoke helloworld-agent", Client)
+    Note over App,OTel: gen_ai.agent.name, gen_ai.operation.name set here
+
+    App->>MW: GetResponseAsync(messages, options)
+    loop Tool-call loop (handled by middleware)
+        MW->>AOAI: Chat completion request
+        AOAI-->>MW: tool_call response
+        MW->>MW: Execute tool locally (C# lambda)
+        MW->>AOAI: Chat completion + tool result
+    end
+    AOAI-->>MW: Final text answer
+    MW-->>App: ChatResponse
+
+    App->>OTel: EndActivity("invoke helloworld-agent")
+    App->>OTel: SetStatus(Ok) + EndActivity("run-ai-agent")
+    App->>OTel: ForceFlush
+    OTel->>AppIns: Export traces + metrics
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: App Insights -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Observability</div>
+      <h2>What you see in App Insights</h2>
+      <div style="display:flex; gap:14px; margin-bottom:12px;">
+        <div style="flex:2;">
+          <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#0969da; margin-bottom:6px;">dependencies — distributed trace</div>
+          <pre style="background:#f6f8fa; border-color:#d0d7de; font-size:0.76rem; color:#24292f; margin:0;">Transaction Search → Requests
+└── run-ai-agent                        (kind: Request)
+    ├── chat gpt-4o  [call #1]          tool_call: GetCurrentDateTime()
+    │     gen_ai.prompt      = "What's the weather in London &amp; Tokyo?"
+    │     gen_ai.completion  = '{"tool_call":{"name":"GetCurrentDateTime"}}'
+    ├── chat gpt-4o  [call #2]          tool_call: GetWeather("London")
+    ├── chat gpt-4o  [call #3]          tool_call: GetWeather("Tokyo")
+    ├── chat gpt-4o  [call #4]          tool_call: Calculate(28, -, 14)
+    └── chat gpt-4o  [call #5]          Final text answer
+          duration / success / input+output tokens per span</pre>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#166534; margin-bottom:6px;">genAIContent — message bodies</div>
+          <pre style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; font-size:0.76rem; color:#24292f; margin:0; padding:14px 16px;">One row per model call:
+
+  modelName       gpt-4o
+  inputMessages   [{ role:"user",
+                    content:"..." }]
+  outputMessages  [{ role:"assistant",
+                    content:"..." }]
+  input_tokens    18
+  output_tokens   94
+  operation_Id    ← join key to
+                    dependencies</pre>
+          <p style="margin-top:8px; font-size:0.78rem; color:#6b7280;">Content in first-class columns — no nested <code style="font-family:monospace;">parse_json</code> needed</p>
+        </div>
+      </div>
+      <pre style="background:#f6f8fa; border-color:#d0d7de; font-size:0.76rem; color:#24292f;">Metrics → customMetrics
+  gen_ai.client.token.usage         one data point per model call — accumulates
+  gen_ai.client.operation.duration  latency per leg of the loop</pre>
+      <p style="margin-top:14px; font-size:0.88rem;">Each <code style="color:#8250df; font-family:monospace;">dependencies</code> span and each <code style="color:#166534; font-family:monospace;">genAIContent</code> row share the same <code style="color:#0550ae; font-family:monospace;">operation_Id</code> — join them to combine timing &amp; error data with full message content.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Custom dependency for Agent Preview -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">App Insights Agent Preview</div>
+      <h2>Custom dependency span — simulating Foundry agent tags</h2>
+      <p style="margin-bottom:18px; font-size:0.9rem;">App Insights Agent Preview looks for <code style="color:#8250df; font-family:monospace;">gen_ai.agent.name</code> and <code style="color:#8250df; font-family:monospace;">gen_ai.operation.name</code> on a <strong>Client-kind</strong> dependency span. The <code style="color:#8250df; font-family:monospace;">Microsoft.Extensions.AI</code> SDK does not set these automatically — so we create a custom wrapper span around the entire <code style="color:#8250df; font-family:monospace;">GetResponseAsync</code> call.</p>
+      <pre><span class="cmt">// Custom Client span wrapping the full agent invocation (including tool-call loop).
+// Setting gen_ai tags here makes it appear in App Insights Agent Preview
+// without needing to propagate tags to every child chat span.</span>
+<span class="type">ChatResponse</span> <span class="var">response</span>;
+<span class="kw">using</span> (<span class="kw">var</span> <span class="var">agentSpan</span> = <span class="var">appSource</span>.<span class="mth">StartActivity</span>(<span class="str">"invoke helloworld-agent"</span>, <span class="type">ActivityKind</span>.<span class="var">Client</span>))
+{
+    <span class="var">agentSpan</span>?.<span class="mth">SetTag</span>(<span class="str">"gen_ai.operation.name"</span>, <span class="str">"invoke_agent"</span>);  <span class="cmt">// required for Agent Preview</span>
+    <span class="var">agentSpan</span>?.<span class="mth">SetTag</span>(<span class="str">"gen_ai.agent.name"</span>,     <span class="str">"helloworld-agent"</span>); <span class="cmt">// agent identity in the dashboard</span>
+    <span class="var">agentSpan</span>?.<span class="mth">SetTag</span>(<span class="str">"gen_ai.system"</span>,         <span class="str">"openai"</span>);
+    <span class="var">agentSpan</span>?.<span class="mth">SetTag</span>(<span class="str">"gen_ai.request.model"</span>,  <span class="var">deploymentName</span>);
+
+    <span class="var">response</span> = <span class="kw">await</span> <span class="var">chatClient</span>.<span class="mth">GetResponseAsync</span>(<span class="var">messages</span>, <span class="var">options</span>);
+    <span class="var">agentSpan</span>?.<span class="mth">SetStatus</span>(<span class="type">ActivityStatusCode</span>.<span class="var">Ok</span>);
+}</pre>
+      <div style="margin-top:16px; display:flex; gap:12px;">
+        <div style="flex:1; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:14px;">
+          <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; color:#166534; margin-bottom:6px;">Resulting trace tree</div>
+          <pre style="margin:0; font-size:0.76rem; background:transparent; border:none; padding:0; color:#24292f;">run-ai-agent              (Request)
+  └── invoke helloworld-agent  (Client) ← gen_ai.agent.name here
+        ├── chat gpt-4o  [1]
+        ├── chat gpt-4o  [2]
+        └── chat gpt-4o  [n]</pre>
+        </div>
+        <div style="flex:1; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:14px;">
+          <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; color:#991b1b; margin-bottom:6px;">Without this pattern</div>
+          <p style="font-size:0.82rem; color:#6b7280; margin:0;">The individual <code style="font-family:monospace;">chat gpt-4o</code> spans carry no agent identity. App Insights Agent Preview has nothing to group them under and the agent does not appear in the dashboard.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Screenshot — Transaction view -->
+  <div class="slide">
+    <div class="content" style="max-width:960px; align-items:center; display:flex; flex-direction:column;">
+      <div class="tag">App Insights · Screenshot</div>
+      <h2 style="margin-bottom:16px;">Transaction Search — end-to-end trace</h2>
+      <img src="images/AppInsights-Transaction.png" alt="App Insights Transaction Search showing the full agent trace" class="screenshot" />
+    </div>
+  </div>
+
+  <!-- SLIDE 9: Screenshot — Agent Dashboard -->
+  <div class="slide">
+    <div class="content" style="max-width:960px; align-items:center; display:flex; flex-direction:column;">
+      <div class="tag">App Insights · Screenshot</div>
+      <h2 style="margin-bottom:16px;">Agent Preview Dashboard</h2>
+      <img src="images/AgentDashboard.png" alt="App Insights Agent Preview dashboard showing helloworld-agent" class="screenshot" />
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 5</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let current = 0;
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsEl.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(n, totalSlides - 1));
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.add('active');
+    document.getElementById('counter').textContent = `${current + 1} / ${totalSlides}`;
+    document.getElementById('prev').disabled = current === 0;
+    document.getElementById('next').disabled = current === totalSlides - 1;
+    if (window.__mermaidInit) window.__mermaidInit();
+  }
+  function go(dir) { goTo(current + dir); }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     { e.preventDefault(); go(-1); }
+  });
+</script>
+</body>
+</html>

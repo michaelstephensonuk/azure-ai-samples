@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>02 · Hello World Logging — OpenTelemetry + App Insights</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #0969da; margin-bottom: 14px; }
+  h1 { font-size: 3rem; font-weight: 700; line-height: 1.15; color: #111827; }
+  h1 span { color: #0969da; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 28px; }
+  .subtitle { font-size: 1.15rem; color: #6b7280; margin-top: 16px; max-width: 640px; text-align: center; line-height: 1.6; }
+  p { font-size: 1.05rem; color: #6b7280; line-height: 1.7; max-width: 780px; }
+  .content { width: 100%; max-width: 860px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th { text-align: left; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: #0969da; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 10px 12px; font-size: 0.95rem; border-bottom: 1px solid #f3f4f6; color: #111827; vertical-align: top; }
+  td:first-child { color: #0550ae; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.88rem; white-space: nowrap; }
+  td:last-child { color: #6b7280; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 20px 24px; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.83rem; line-height: 1.65; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw { color: #cf222e; } .type { color: #0550ae; } .str { color: #0a3069; } .cmt { color: #6e7781; font-style: italic; } .mth { color: #8250df; } .var { color: #24292f; }
+
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+  .box { background: #f9fafb; border: 1px solid #d0d7de; border-radius: 8px; padding: 12px 20px; font-size: 0.88rem; text-align: center; min-width: 120px; color: #111827; }
+  .box.blue { border-color: #0969da; background: #dbeafe; color: #1e40af; }
+  .box.green { border-color: #2da44e; background: #dcfce7; color: #166534; }
+  .box.purple { border-color: #8250df; background: #f3e8ff; color: #6f42c1; }
+  .box.orange { border-color: #d97706; background: #fef3c7; color: #92400e; }
+  .box small { display: block; color: #6b7280; font-size: 0.75rem; margin-top: 3px; }
+  .arrow { color: #d0d7de; font-size: 1.5rem; margin: 0 6px; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; margin: 3px; }
+  .pill-blue { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-green { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .pill-orange { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #0969da; color: #0969da; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #0969da; }
+
+  .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+
+  .signal-row { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .signal { flex: 1; min-width: 180px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; }
+  .signal .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #0969da; margin-bottom: 6px; font-weight: 600; }
+  .signal .name { font-family: 'Cascadia Code', monospace; font-size: 0.82rem; color: #0550ae; margin-bottom: 4px; }
+  .signal .desc { font-size: 0.82rem; color: #6b7280; }
+</style>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false, theme: 'default' });
+  window.__mermaidInit = async () => {
+    await mermaid.run({ querySelector: '.slide.active .mermaid' });
+  };
+  // Run once on load in case a mermaid slide is already active,
+  // and re-run whenever the user navigates to a new slide.
+  window.__mermaidInit();
+</script>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 02 of 06</div>
+    <div class="tag">OpenTelemetry · Application Insights · Azure OpenAI</div>
+    <h1><span>Hello World</span> + Logging</h1>
+    <p class="subtitle">Adds full OpenTelemetry observability to the basic hello world — traces, metrics, and App Insights export — without capturing any prompt or response text.</p>
+    <div style="margin-top:40px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-blue">UseOpenTelemetry()</span>
+      <span class="pill pill-blue">TracerProvider</span>
+      <span class="pill pill-blue">MeterProvider</span>
+      <span class="pill pill-orange">App Insights</span>
+      <span class="pill pill-green">No Sensitive Data</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: What it adds -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Overview</div>
+      <h2>What's new vs Hello World</h2>
+      <p style="margin-bottom:24px;">Same single-prompt call — but now every AI request is automatically instrumented. The <code style="color:#0550ae; font-family:monospace;">UseOpenTelemetry()</code> middleware adds a child span for each model call. Prompt and response text are <strong style="color:#111827;">not</strong> captured.</p>
+      <table>
+        <thead><tr><th>Component</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td>UseOpenTelemetry()</td><td>Middleware — auto-creates a child span for every GetResponseAsync call</td></tr>
+          <tr><td>TracerProvider</td><td>Pipeline: Console exporter + Azure Monitor (App Insights) exporter</td></tr>
+          <tr><td>MeterProvider</td><td>Pipeline: token usage + operation duration metrics to App Insights</td></tr>
+          <tr><td>StartActivity("run-ai-prompt", Server)</td><td>Root span — App Insights classifies Server-kind spans as Requests</td></tr>
+          <tr><td>ForceFlush()</td><td>Ensures all buffered telemetry is exported before the process exits</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Key code -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Key Code</div>
+      <h2>OpenTelemetry setup + middleware</h2>
+      <pre><span class="cmt">// Traces pipeline</span>
+<span class="kw">using var</span> <span class="var">tracerProvider</span> = <span class="type">Sdk</span>.<span class="mth">CreateTracerProviderBuilder</span>()
+    .<span class="mth">AddSource</span>(<span class="str">"helloworld-logging"</span>)
+    .<span class="mth">AddSource</span>(<span class="str">"Microsoft.Extensions.AI"</span>)
+    .<span class="mth">AddConsoleExporter</span>()
+    .<span class="mth">AddAzureMonitorTraceExporter</span>(o => o.<span class="var">ConnectionString</span> = <span class="var">appInsightsConnectionString</span>)
+    .<span class="mth">Build</span>();
+
+<span class="cmt">// Metrics pipeline</span>
+<span class="kw">using var</span> <span class="var">meterProvider</span> = <span class="type">Sdk</span>.<span class="mth">CreateMeterProviderBuilder</span>()
+    .<span class="mth">AddMeter</span>(<span class="str">"Experimental.Microsoft.Extensions.AI"</span>)
+    .<span class="mth">AddAzureMonitorMetricExporter</span>(o => o.<span class="var">ConnectionString</span> = <span class="var">appInsightsConnectionString</span>)
+    .<span class="mth">Build</span>();
+
+<span class="cmt">// Client with OTel middleware (no sensitive data)</span>
+<span class="type">IChatClient</span> <span class="var">chatClient</span> = <span class="kw">new</span> <span class="type">AzureOpenAIClient</span>(...)
+    .<span class="mth">AsBuilder</span>()
+    .<span class="mth">UseOpenTelemetry</span>()   <span class="cmt">// ← EnableSensitiveData defaults to false</span>
+    .<span class="mth">Build</span>();
+
+<span class="kw">using</span> (<span class="var">appSource</span>.<span class="mth">StartActivity</span>(<span class="str">"run-ai-prompt"</span>, <span class="type">ActivityKind</span>.<span class="var">Server</span>))
+{
+    <span class="kw">var</span> <span class="var">response</span> = <span class="kw">await</span> <span class="var">chatClient</span>.<span class="mth">GetResponseAsync</span>(<span class="var">prompt</span>);
+}</pre>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Flow -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Telemetry Flow</div>
+      <h2>How signals flow to App Insights</h2>
+      <div class="flow" style="margin-bottom:28px; flex-direction:column; gap:12px; align-items:flex-start; max-width:700px; margin-left:auto; margin-right:auto;">
+        <div style="display:flex; align-items:center; gap:10px; width:100%;">
+          <div class="box blue" style="min-width:200px;">Console App<small>StartActivity → Server span</small></div>
+          <div class="arrow">→</div>
+          <div class="box purple" style="min-width:160px;">Azure OpenAI<small>gpt-4o call</small></div>
+        </div>
+        <div style="display:flex; gap:12px; margin-left:40px;">
+          <div class="arrow" style="transform:rotate(90deg);">↓</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="box" style="min-width:200px;">OTel SDK<small>UseOpenTelemetry() creates child span</small></div>
+          <div class="arrow">→</div>
+          <div class="box green" style="min-width:160px;">Console Exporter<small>local dev view</small></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; margin-left:40px;">
+          <div class="arrow">+</div>
+          <div class="box orange" style="min-width:160px;">Azure Monitor<small>App Insights export</small></div>
+        </div>
+      </div>
+      <p style="font-size:0.9rem;">The root span <code style="color:#0550ae; font-family:monospace;">run-ai-prompt</code> uses <code style="color:#0550ae; font-family:monospace;">ActivityKind.Server</code> — App Insights classifies this as a <strong style="color:#111827;">Request</strong>. The child <code style="color:#0550ae; font-family:monospace;">chat gpt-4o</code> span becomes a <strong style="color:#111827;">Dependency</strong> nested beneath it.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Sequence diagram -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Message Sequence</div>
+      <h2>Step-by-step call sequence</h2>
+      <div class="mermaid" style="background:#f6f8fa; border:1px solid #d0d7de; border-radius:10px; padding:20px; overflow:auto; max-height:62vh;">
+sequenceDiagram
+    participant App as Console App
+    participant OTel as OpenTelemetry SDK
+    participant AOAI as Azure OpenAI
+    participant Console as Terminal
+    participant AppIns as Application Insights
+
+    App->>OTel: Build TracerProvider &amp; MeterProvider
+    App->>OTel: StartActivity("run-ai-prompt", Server)
+    Note over App,OTel: Root span opens — kind=Server so App Insights classifies it as a Request
+
+    App->>AOAI: IChatClient.GetResponseAsync(prompt)
+    Note over App,AOAI: UseOpenTelemetry middleware creates child span "chat gpt-4o"
+    AOAI-->>App: ChatResponse (text + usage)
+
+    App->>OTel: SetTag(ai.input_tokens, ai.output_tokens)
+    App->>OTel: SetStatus(Ok) + EndActivity
+    Note over App,OTel: Root span closes and is handed to the exporter queue
+
+    App->>OTel: ForceFlush (traces + metrics)
+    OTel->>Console: Print spans and metrics to terminal
+    OTel->>AppIns: Export via Azure Monitor exporter
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: Signals -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Observability Output</div>
+      <h2>What you see in App Insights</h2>
+      <div class="signal-row">
+        <div class="signal">
+          <div class="label">Trace · Request</div>
+          <div class="name">run-ai-prompt</div>
+          <div class="desc">Root span. Find in Transaction Search → Requests.</div>
+        </div>
+        <div class="signal">
+          <div class="label">Trace · Dependency</div>
+          <div class="name">chat gpt-4o</div>
+          <div class="desc">Nested under the request. Includes model, duration, token attributes. No prompt text.</div>
+        </div>
+        <div class="signal">
+          <div class="label">Metric</div>
+          <div class="name">gen_ai.client.token.usage</div>
+          <div class="desc">Input + output token counts split by gen_ai.token.type.</div>
+        </div>
+        <div class="signal">
+          <div class="label">Metric</div>
+          <div class="name">gen_ai.client.operation.duration</div>
+          <div class="desc">Latency of each AI call in seconds.</div>
+        </div>
+      </div>
+      <div style="margin-top:20px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:16px;">
+        <p style="font-size:0.88rem; color:#374151;"><strong style="color:#d97706;">&#9888; No sensitive data:</strong> Prompt and response text are <em>not</em> stored. To add them, see <strong style="color:#111827;">03 · helloworld.logging.with.message.body</strong>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: App Insights screenshot -->
+  <div class="slide">
+    <div class="content" style="max-width:1200px; width:100%;">
+      <div class="tag">Live Evidence</div>
+      <h2 style="margin-bottom:16px;">App Insights — End-to-End Transaction view</h2>
+      <div style="overflow:auto; max-height:72vh; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+        <img src="images/AppInsights.Transaction.png" alt="App Insights End-to-End Transaction" style="width:100%; display:block;" />
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: KQL queries -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">Log Analytics / KQL</div>
+      <h2>Useful queries for this sample</h2>
+      <div style="display:flex; gap:16px; flex-direction:column;">
+        <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px 18px;">
+          <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#0969da; margin-bottom:8px;">Dependencies — All AI calls with token counts</div>
+          <pre style="margin:0; font-size:0.75rem; line-height:1.55; white-space:pre-wrap;"><span class="kw">dependencies</span>
+<span class="cmt">| where</span> type == <span class="str">"Other"</span>
+<span class="cmt">| extend</span> gen_ai_provider_name_     = tostring(customDimensions[<span class="str">"gen_ai.provider.name"</span>])
+<span class="cmt">| extend</span> gen_ai_request_model_      = tostring(customDimensions[<span class="str">"gen_ai.request.model"</span>])
+<span class="cmt">| extend</span> gen_ai_usage_input_tokens_  = tostring(customDimensions[<span class="str">"gen_ai.usage.input_tokens"</span>])
+<span class="cmt">| extend</span> gen_ai_usage_output_tokens_ = tostring(customDimensions[<span class="str">"gen_ai.usage.output_tokens"</span>])
+<span class="cmt">| project</span> timestamp, operation_Id, name, gen_ai_provider_name_, gen_ai_request_model_,
+          gen_ai_usage_input_tokens_, gen_ai_usage_output_tokens_
+<span class="cmt">| order by</span> timestamp <span class="kw">desc</span></pre>
+        </div>
+        <div style="display:flex; gap:16px;">
+          <div style="flex:1; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px 18px;">
+            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#0969da; margin-bottom:8px;">Token usage by type &middot; per hour</div>
+            <pre style="margin:0; font-size:0.75rem; line-height:1.55; white-space:pre-wrap;"><span class="kw">customMetrics</span>
+<span class="cmt">| where</span> name == <span class="str">"gen_ai.client.token.usage"</span>
+<span class="cmt">| extend</span> tokenType = tostring(
+    customDimensions[<span class="str">"gen_ai.token.type"</span>])
+<span class="cmt">| summarize</span> totalTokens = sum(value)
+    by tokenType, bin(timestamp, 1h)
+<span class="cmt">| order by</span> timestamp <span class="kw">desc</span></pre>
+          </div>
+          <div style="flex:1; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px 18px;">
+            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#0969da; margin-bottom:8px;">Token usage by app &middot; per hour</div>
+            <pre style="margin:0; font-size:0.75rem; line-height:1.55; white-space:pre-wrap;"><span class="kw">customMetrics</span>
+<span class="cmt">| where</span> name == <span class="str">"gen_ai.client.token.usage"</span>
+<span class="cmt">| summarize</span> totalTokens = sum(value)
+    by cloud_RoleName,
+       bin(timestamp, 1h)
+<span class="cmt">| order by</span> timestamp <span class="kw">desc</span></pre>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:14px; font-size:0.82rem;">Full queries are in <strong style="color:#111827;">Documentation/ReadMe.Useful.KQL.md</strong> alongside this sample.</p>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 8</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let current = 0;
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsEl.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(n, totalSlides - 1));
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.add('active');
+    document.getElementById('counter').textContent = `${current + 1} / ${totalSlides}`;
+    document.getElementById('prev').disabled = current === 0;
+    document.getElementById('next').disabled = current === totalSlides - 1;
+    if (window.__mermaidInit) window.__mermaidInit();
+  }
+  function go(dir) { goTo(current + dir); }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     { e.preventDefault(); go(-1); }
+  });
+</script>
+</body>
+</html>

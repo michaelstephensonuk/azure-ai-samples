@@ -1,0 +1,82 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "helloworld.logging",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: helloworld.logging",
+      "program": "${workspaceFolder}/02.helloworld.logging/bin/Debug/net10.0/helloworld.logging.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/02.helloworld.logging",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "helloworld.logging.with.message.body",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: helloworld.logging.with.message.body",
+      "program": "${workspaceFolder}/03.helloworld.logging.with.message.body/bin/Debug/net10.0/helloworld.logging.with.message.body.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/03.helloworld.logging.with.message.body",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "helloworld.agent",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: helloworld.agent",
+      "program": "${workspaceFolder}/05.helloworld.agent/bin/Debug/net10.0/helloworld.agent.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/05.helloworld.agent",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "helloworld.via.api.management",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: helloworld.via.api.management",
+      "program": "${workspaceFolder}/04.helloworld.via.api.management/bin/Debug/net10.0/helloworld.via.api.management.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/04.helloworld.via.api.management",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "helloworld.agent.via.api.management",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: helloworld.agent.via.api.management",
+      "program": "${workspaceFolder}/06.helloworld.agent.via.api.management/bin/Debug/net10.0/helloworld.agent.via.api.management.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/06.helloworld.agent.via.api.management",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "helloworld",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: helloworld",
+      "program": "${workspaceFolder}/01.helloworld/bin/Debug/net10.0/helloworld.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/01.helloworld",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "helloworld.agent.agentsdk",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: helloworld.agent.agentsdk",
+      "program": "${workspaceFolder}/07.helloworld.agent.agentsdk/bin/Debug/net10.0/helloworld.agent.agentsdk.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/07.helloworld.agent.agentsdk",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    }
+  ]
+}

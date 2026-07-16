@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>01 · Hello World — Azure OpenAI</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #ffffff;
+    color: #111827;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  /* --- slide accent colours --- */
+  .slide-1 { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); }
+  .slide-2 { background: #ffffff; }
+  .slide-3 { background: #ffffff; }
+  .slide-4 { background: #ffffff; }
+  .slide-5 { background: #ffffff; }
+
+  /* --- typography --- */
+  .tag {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #0969da;
+    margin-bottom: 14px;
+  }
+  h1 { font-size: 3rem; font-weight: 700; line-height: 1.15; color: #111827; }
+  h1 span { color: #0969da; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 28px; }
+  .subtitle { font-size: 1.15rem; color: #6b7280; margin-top: 16px; max-width: 640px; text-align: center; line-height: 1.6; }
+  p { font-size: 1.05rem; color: #6b7280; line-height: 1.7; max-width: 780px; }
+
+  /* --- layout helpers --- */
+  .cols { display: flex; gap: 40px; width: 100%; max-width: 1000px; }
+  .col { flex: 1; }
+  .content { width: 100%; max-width: 860px; }
+
+  /* --- table --- */
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th { text-align: left; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: #0969da; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 10px 12px; font-size: 0.95rem; border-bottom: 1px solid #f3f4f6; color: #111827; vertical-align: top; }
+  td:first-child { color: #0550ae; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.88rem; white-space: nowrap; }
+  td:last-child { color: #6b7280; }
+
+  /* --- code block --- */
+  pre {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 20px 24px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.83rem;
+    line-height: 1.65;
+    overflow-x: auto;
+    color: #24292f;
+    width: 100%;
+  }
+  .kw { color: #cf222e; }
+  .type { color: #0550ae; }
+  .str { color: #0a3069; }
+  .cmt { color: #6e7781; font-style: italic; }
+  .mth { color: #8250df; }
+  .var { color: #24292f; }
+
+  /* --- flow boxes --- */
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+  .box {
+    background: #f9fafb;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 0.88rem;
+    text-align: center;
+    min-width: 120px;
+    color: #111827;
+  }
+  .box.blue { border-color: #0969da; background: #dbeafe; color: #1e40af; }
+  .box.green { border-color: #2da44e; background: #dcfce7; color: #166534; }
+  .box.purple { border-color: #8250df; background: #f3e8ff; color: #6f42c1; }
+  .box small { display: block; color: #6b7280; font-size: 0.75rem; margin-top: 3px; }
+  .arrow { color: #d0d7de; font-size: 1.5rem; margin: 0 6px; }
+
+  /* --- pills --- */
+  .pill {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin: 3px;
+  }
+  .pill-blue { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-green { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+  /* --- nav --- */
+  nav {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #ffffffee;
+    backdrop-filter: blur(8px);
+    padding: 10px 24px;
+    border-radius: 40px;
+    border: 1px solid #e5e7eb;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  nav button {
+    background: none;
+    border: 1px solid #d0d7de;
+    color: #6b7280;
+    padding: 6px 18px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: all 0.2s;
+  }
+  nav button:hover { border-color: #0969da; color: #0969da; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+
+  /* dots */
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #0969da; }
+
+  .badge {
+    display: inline-block;
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+    color: #1d4ed8;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+    margin-bottom: 20px;
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide slide-1 active">
+    <div class="badge">Sample 01 of 06</div>
+    <div class="tag">Azure OpenAI · Microsoft.Extensions.AI</div>
+    <h1><span>Hello World</span></h1>
+    <p class="subtitle">The simplest possible Azure OpenAI call — one prompt, one response, printed to the console. No observability, just the raw mechanics.</p>
+    <div style="margin-top:40px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-blue">AzureOpenAIClient</span>
+      <span class="pill pill-blue">IChatClient</span>
+      <span class="pill pill-green">.NET 10 Console App</span>
+      <span class="pill pill-green">Microsoft.Extensions.AI</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: What it does -->
+  <div class="slide slide-2">
+    <div class="content">
+      <div class="tag">Overview</div>
+      <h2>What this sample does</h2>
+      <p style="margin-bottom:28px;">Sends a single chat message to Azure OpenAI, prints the response text and token usage to the terminal. It is the <strong style="color:#111827;">baseline</strong> — the smallest working example before adding observability, agents or gateways.</p>
+      <table>
+        <thead><tr><th>Component</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td>AzureOpenAIClient</td><td>Connects to Azure OpenAI with an endpoint URL + API key</td></tr>
+          <tr><td>IChatClient</td><td>Provider-neutral abstraction from Microsoft.Extensions.AI</td></tr>
+          <tr><td>GetResponseAsync()</td><td>Sends the prompt and awaits the model's reply</td></tr>
+          <tr><td>response.Usage</td><td>Exposes InputTokenCount and OutputTokenCount</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Key code -->
+  <div class="slide slide-3">
+    <div class="content">
+      <div class="tag">Key Code</div>
+      <h2>Building and calling the client</h2>
+      <pre><span class="type">IChatClient</span> <span class="var">chatClient</span> = <span class="kw">new</span> <span class="type">AzureOpenAIClient</span>(
+    <span class="kw">new</span> <span class="type">Uri</span>(<span class="var">endpoint</span>),
+    <span class="kw">new</span> <span class="type">AzureKeyCredential</span>(<span class="var">apiKey</span>))
+    .<span class="mth">GetChatClient</span>(<span class="var">deploymentName</span>)
+    .<span class="mth">AsIChatClient</span>()    <span class="cmt">// wrap in the ME.AI abstraction</span>
+    .<span class="mth">AsBuilder</span>()
+    .<span class="mth">Build</span>();
+
+<span class="kw">var</span> <span class="var">response</span> = <span class="kw">await</span> <span class="var">chatClient</span>.<span class="mth">GetResponseAsync</span>(
+    <span class="str">"Hello! Can you tell me one interesting fact about AI?"</span>);
+
+<span class="type">Console</span>.<span class="mth">WriteLine</span>(<span class="var">response</span>.<span class="var">Text</span>);
+<span class="type">Console</span>.<span class="mth">WriteLine</span>(<span class="str">$"Tokens — Input: <span class="var">{response.Usage?.InputTokenCount}</span>, Output: <span class="var">{response.Usage?.OutputTokenCount}</span>"</span>);</pre>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Flow -->
+  <div class="slide slide-4">
+    <div class="content">
+      <div class="tag">Flow</div>
+      <h2>How the call flows</h2>
+      <div class="flow" style="margin-bottom:32px;">
+        <div class="box blue">Console App<small>Program.cs</small></div>
+        <div class="arrow">→</div>
+        <div class="box">AzureOpenAIClient<small>SDK</small></div>
+        <div class="arrow">→</div>
+        <div class="box purple">Azure OpenAI<small>gpt-4o</small></div>
+        <div class="arrow">→</div>
+        <div class="box green">Terminal Output<small>response + tokens</small></div>
+      </div>
+      <p>The builder chain wraps the raw Azure SDK client in the <code style="color:#0550ae; font-family:monospace;">IChatClient</code> abstraction. This means you can swap the underlying provider (e.g. Ollama, OpenAI) later without changing the calling code.</p>
+      <div style="margin-top:28px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:20px;">
+        <p style="font-size:0.88rem; color:#374151;"><strong style="color:#166534;">Note:</strong> There is no OpenTelemetry setup here — no spans, no metrics, no App Insights export. That is intentionally added in the next sample (<strong style="color:#111827;">02 · helloworld.logging</strong>).</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Output -->
+  <div class="slide slide-5">
+    <div class="content">
+      <div class="tag">Output</div>
+      <h2>What you see in the terminal</h2>
+      <pre style="background:#f6f8fa; border-color:#d0d7de; color:#24292f;">Azure OpenAI Chat - Hello World
+Endpoint  : https://&lt;your-resource&gt;.openai.azure.com/
+Deployment: gpt-4o
+
+Sending prompt...
+
+Response:
+One fascinating fact about artificial intelligence is that...
+
+Token usage — Input: 18, Output: 94, Total: 112
+Done</pre>
+      <div style="margin-top:24px;">
+        <p>No observability, no spans, no App Insights — just the raw call. Add observability by moving to <strong style="color:#0969da;">02 · helloworld.logging</strong>.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Navigation -->
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 5</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let current = 0;
+
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsEl.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(n, totalSlides - 1));
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.add('active');
+    document.getElementById('counter').textContent = `${current + 1} / ${totalSlides}`;
+    document.getElementById('prev').disabled = current === 0;
+    document.getElementById('next').disabled = current === totalSlides - 1;
+  }
+
+  function go(dir) { goTo(current + dir); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     { e.preventDefault(); go(-1); }
+  });
+</script>
+</body>
+</html>

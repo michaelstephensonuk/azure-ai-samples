@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>04 · Hello World via API Management</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #b45309; margin-bottom: 14px; }
+  h1 { font-size: 2.7rem; font-weight: 700; line-height: 1.15; color: #111827; }
+  h1 span { color: #b45309; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 28px; }
+  .subtitle { font-size: 1.1rem; color: #6b7280; margin-top: 16px; max-width: 640px; text-align: center; line-height: 1.6; }
+  p { font-size: 1.05rem; color: #6b7280; line-height: 1.7; max-width: 780px; }
+  .content { width: 100%; max-width: 900px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th { text-align: left; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: #b45309; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 10px 12px; font-size: 0.92rem; border-bottom: 1px solid #f3f4f6; color: #111827; vertical-align: top; }
+  td:first-child { color: #0550ae; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.85rem; white-space: nowrap; }
+  td:last-child { color: #6b7280; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 20px 24px; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.82rem; line-height: 1.65; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw { color: #cf222e; } .type { color: #0550ae; } .str { color: #0a3069; } .cmt { color: #6e7781; font-style: italic; } .mth { color: #8250df; } .var { color: #24292f; } .hi { color: #b45309; font-weight: 700; }
+
+  .flow-h { display: flex; align-items: center; gap: 0; flex-wrap: nowrap; justify-content: center; }
+  .box { background: #f9fafb; border: 1px solid #d0d7de; border-radius: 8px; padding: 12px 18px; font-size: 0.85rem; text-align: center; color: #111827; }
+  .box.blue { border-color: #0969da; background: #dbeafe; color: #1e40af; }
+  .box.green { border-color: #2da44e; background: #dcfce7; color: #166534; }
+  .box.orange { border-color: #d97706; background: #fef3c7; color: #92400e; }
+  .box.purple { border-color: #8250df; background: #f3e8ff; color: #6f42c1; }
+  .box small { display: block; color: #6b7280; font-size: 0.72rem; margin-top: 3px; }
+  .arrow { color: #d0d7de; font-size: 1.4rem; margin: 0 8px; flex-shrink: 0; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; margin: 3px; }
+  .pill-blue { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-orange { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .pill-green { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #b45309; color: #b45309; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #b45309; }
+  .badge { display: inline-block; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+
+  .step { display: flex; gap: 14px; margin-bottom: 12px; align-items: flex-start; }
+  .step-num { width: 26px; height: 26px; border-radius: 50%; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+  .step-text { font-size: 0.92rem; color: #6b7280; line-height: 1.5; }
+  .step-text strong { color: #111827; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 04 of 06</div>
+    <div class="tag">Azure API Management · Gateway Pattern</div>
+    <h1>Hello World via <span>API Management</span></h1>
+    <p class="subtitle">Routes every AI call through Azure APIM instead of hitting Azure OpenAI directly. APIM validates the caller, rewrites the URL, and injects the Azure OpenAI key — the application never holds it.</p>
+    <div style="margin-top:40px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-orange">APIM Gateway</span>
+      <span class="pill pill-blue">OpenAIClient (not Azure)</span>
+      <span class="pill pill-blue">Ocp-Apim-Subscription-Key</span>
+      <span class="pill pill-green">Key never in client code</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: Architecture overview diagram -->
+  <div class="slide">
+    <div class="content" style="max-width:1000px;">
+      <div class="tag">Architecture Overview</div>
+      <h2>Two separate telemetry planes — one application, one gateway</h2>
+
+      <div style="display:grid; grid-template-columns:auto 120px auto 120px auto; grid-template-rows:auto auto auto auto; justify-content:center; align-items:center; margin-top:32px; gap:0;">
+
+        <!-- Row 1: Arrow labels above boxes -->
+        <div style="grid-column:2; grid-row:1; display:flex; justify-content:center; padding-bottom:4px;">
+          <div style="color:#6b7280; font-size:0.72rem; white-space:nowrap;">Ocp-Apim-Subscription-Key</div>
+        </div>
+        <div style="grid-column:4; grid-row:1; display:flex; justify-content:center; padding-bottom:4px;">
+          <div style="color:#6b7280; font-size:0.72rem; white-space:nowrap;">api-key (Named Value)</div>
+        </div>
+
+        <!-- Row 2: Console App -->
+        <div style="grid-column:1; grid-row:2; display:flex; justify-content:center;">
+          <div style="background:#f9fafb; border:2px solid #374151; border-radius:10px; padding:16px 28px; font-weight:700; color:#111827; font-size:0.95rem; white-space:nowrap;">🖥️ Console App</div>
+        </div>
+
+        <!-- Row 2: Arrow → APIM -->
+        <div style="grid-column:2; grid-row:2; display:flex; align-items:center; justify-content:center;">
+          <div style="color:#d0d7de; font-size:1.6rem; line-height:1;">→</div>
+        </div>
+
+        <!-- Row 2: APIM -->
+        <div style="grid-column:3; grid-row:2; display:flex; justify-content:center;">
+          <div style="background:#fef3c7; border:2px solid #d97706; border-radius:10px; padding:16px 28px; font-weight:700; color:#92400e; font-size:0.95rem; white-space:nowrap;">Azure API Management</div>
+        </div>
+
+        <!-- Row 2: Arrow → Azure OpenAI -->
+        <div style="grid-column:4; grid-row:2; display:flex; align-items:center; justify-content:center;">
+          <div style="color:#d0d7de; font-size:1.6rem; line-height:1;">→</div>
+        </div>
+
+        <!-- Row 2: Azure OpenAI -->
+        <div style="grid-column:5; grid-row:2; display:flex; justify-content:center;">
+          <div style="background:#f3e8ff; border:2px solid #8250df; border-radius:10px; padding:16px 28px; font-weight:700; color:#8250df; font-size:0.95rem; white-space:nowrap;">Azure OpenAI</div>
+        </div>
+
+        <!-- Row 3: Vertical arrow labels + arrows -->
+        <div style="grid-column:1; grid-row:3; display:flex; flex-direction:column; align-items:center; padding:8px 0;">
+          <div style="color:#d0d7de; font-size:1.2rem;">↓</div>
+          <div style="color:#6b7280; font-size:0.72rem; text-align:center; line-height:1.5; margin-top:2px;">ME.AI SDK<br/>UseOpenTelemetry()</div>
+        </div>
+
+        <div style="grid-column:3; grid-row:3; display:flex; flex-direction:column; align-items:center; padding:8px 0;">
+          <div style="color:#d0d7de; font-size:1.2rem;">↓</div>
+          <div style="color:#6b7280; font-size:0.72rem; text-align:center; margin-top:2px;">diagnostics policy</div>
+        </div>
+
+        <!-- Row 4: App Insights boxes -->
+        <div style="grid-column:1; grid-row:4; display:flex; justify-content:center;">
+          <div style="background:#dcfce7; border:2px solid #16a34a; border-radius:10px; padding:16px 28px; font-weight:700; color:#166534; font-size:0.95rem; white-space:nowrap;">App Insights #1</div>
+        </div>
+
+        <div style="grid-column:3; grid-row:4; display:flex; justify-content:center;">
+          <div style="background:#fef3c7; border:2px solid #d97706; border-radius:10px; padding:16px 28px; font-weight:700; color:#92400e; font-size:0.95rem; white-space:nowrap;">App Insights #2</div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:20px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px 20px; font-size:0.75rem; color:#6b7280; text-align:center; max-width:640px; margin-left:auto; margin-right:auto;">
+        <strong style="color:#111827;">Two independent App Insights instances</strong> — App Insights #1 gets the rich OTel gen_ai traces from the SDK; App Insights #2 gets the APIM gateway logs with per-subscription token accounting.
+      </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Why not AzureOpenAIClient -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Key Decision</div>
+      <h2>Why use OpenAIClient instead of AzureOpenAIClient?</h2>
+      <p style="margin-bottom:24px;">This is the most important architectural choice in this sample:</p>
+      <table>
+        <thead><tr><th>Client</th><th>URL it constructs</th><th>APIM match?</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>AzureOpenAIClient</td>
+            <td style="color:#6b7280; font-family:monospace; font-size:0.82rem;">{endpoint}/openai/deployments/gpt-4o/chat/completions</td>
+            <td style="color:#cf222e;">✗ 404 — APIM operation not found</td>
+          </tr>
+          <tr>
+            <td>OpenAIClient</td>
+            <td style="color:#6b7280; font-family:monospace; font-size:0.82rem;">{endpoint}/chat/completions</td>
+            <td style="color:#166534;">✓ matches APIM operation path</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:20px; background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:16px;">
+        <p style="font-size:0.88rem;">APIM's inbound policy then <strong style="color:#111827;">rewrites</strong> the URL from <code style="color:#0550ae; font-family:monospace;">/chat/completions</code> → <code style="color:#0550ae; font-family:monospace;">/openai/deployments/gpt-4o/chat/completions?api-version=…</code> before forwarding to Azure OpenAI.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Key code -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Key Code</div>
+      <h2>Building the client with APIM transport</h2>
+      <pre><span class="cmt">// HttpClient carries the APIM subscription key on every request</span>
+<span class="kw">var</span> <span class="var">httpClient</span> = <span class="kw">new</span> <span class="type">HttpClient</span>();
+<span class="var">httpClient</span>.<span class="var">DefaultRequestHeaders</span>.<span class="mth">Add</span>(
+    <span class="hi">"Ocp-Apim-Subscription-Key"</span>, <span class="var">apiKey</span>);
+
+<span class="kw">var</span> <span class="var">options</span> = <span class="kw">new</span> <span class="type">OpenAIClientOptions</span>
+{
+    Endpoint = <span class="kw">new</span> <span class="type">Uri</span>(<span class="var">endpoint</span>),   <span class="cmt">// ← APIM gateway URL</span>
+    Transport = <span class="kw">new</span> <span class="type">HttpClientPipelineTransport</span>(<span class="var">httpClient</span>)
+};
+
+<span class="type">IChatClient</span> <span class="var">chatClient</span> = <span class="kw">new</span> <span class="type">OpenAIClient</span>(
+    <span class="kw">new</span> <span class="type">ApiKeyCredential</span>(<span class="str">"placeholder"</span>), <span class="cmt">// key already in headers</span>
+    <span class="var">options</span>)
+    .<span class="mth">GetChatClient</span>(<span class="var">deploymentName</span>)
+    .<span class="mth">AsIChatClient</span>()
+    .<span class="mth">AsBuilder</span>()
+    .<span class="mth">UseOpenTelemetry</span>()
+    .<span class="mth">Build</span>();</pre>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: APIM – Step 1: Add API (Language Model API) -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">APIM Setup · Step 1 of 4</div>
+      <h2>Add a Language Model API</h2>
+      <p style="margin-bottom:16px;">In the Azure portal, navigate to your APIM instance → <strong>APIs</strong> → <strong>+ Add API</strong>. Under <em>Create an AI API</em>, choose <strong>Language Model API</strong> — this template pre-configures the OpenAI-compatible passthrough and token policies.</p>
+      <div style="text-align:center;">
+        <img src="images/apim.01.png" alt="APIM portal – Add API panel showing Language Model API option"
+             style="max-width:100%; max-height:58vh; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.08);" />
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: APIM – Step 2: Configure the API -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">APIM Setup · Step 2 of 4</div>
+      <h2>Configure the API</h2>
+      <p style="margin-bottom:16px;">Fill in the display name, set the <strong>Path</strong> (e.g. <code>samples/azure-open-ai</code>), and choose <strong>Create a passthrough API</strong>. Enter your Azure OpenAI endpoint URL and the API key under <em>Access key</em>. The key is stored securely in APIM — your client app never sees it.</p>
+      <div style="text-align:center;">
+        <img src="images/apim.02.png" alt="APIM Configure API wizard – name, URL, passthrough type and access key"
+             style="max-width:100%; max-height:55vh; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.08);" />
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: APIM – Step 3: Token consumption -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">APIM Setup · Step 3 of 4</div>
+      <h2>Manage token consumption</h2>
+      <p style="margin-bottom:16px;">On the <strong>Manage token consumption</strong> tab, set a <em>Tokens per minute</em> limit (e.g. 1000 TPM) and enable <strong>Track token usage</strong>. Select your Application Insights instance — APIM will emit token metrics automatically via the <code>llm-emit-token-metric</code> policy.</p>
+      <div style="text-align:center;">
+        <img src="images/apim.03.png" alt="APIM Manage token consumption – TPM limit and App Insights token tracking"
+             style="max-width:100%; max-height:55vh; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.08);" />
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: APIM – Step 4: Diagnostics / App Insights -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">APIM Setup · Step 4 of 4</div>
+      <h2>Enable Diagnostics Logs → Application Insights</h2>
+      <p style="margin-bottom:16px;">Under the API's <strong>Settings → Diagnostics Logs</strong>, enable the <strong>Application Insights</strong> destination, set sampling to <strong>100%</strong>, and choose <em>Information</em> verbosity. This ensures every APIM request is correlated with your OpenTelemetry traces in the same App Insights instance.</p>
+      <div style="text-align:center;">
+        <img src="images/apim.05.png" alt="APIM Diagnostics Logs – Application Insights enabled at 100% sampling"
+             style="max-width:100%; max-height:55vh; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.08);" />
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: APIM – Resulting policies -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">APIM Result</div>
+      <h2>Auto-generated inbound policies</h2>
+      <p style="margin-bottom:16px;">Once created, the API portal shows the policies added automatically: <span class="pill pill-orange">set-backend-service</span> <span class="pill pill-orange">llm-emit-token-metric</span> <span class="pill pill-orange">llm-token-limit</span>. Click <strong>+ Add policy</strong> to add custom policies (e.g. <code>rewrite-uri</code> to prepend the deployment path).</p>
+      <div style="text-align:center;">
+        <img src="images/apim.04.png" alt="APIM API view showing inbound policies: set-backend-service, llm-emit-token-metric, llm-token-limit"
+             style="max-width:100%; max-height:52vh; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.08);" />
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: APIM – Full policy XML -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">APIM Policy Detail</div>
+      <h2>Full inbound policy XML</h2>
+      <p style="margin-bottom:16px;">The policy editor shows the complete configuration. Key highlights: the <code>rewrite-uri</code> expression dynamically prepends <code>/openai/deployments/{{AzureOpenAI-DeploymentName}}/</code> to any path, and <code>set-query-parameter</code> enforces the correct <code>api-version</code> — keeping all routing logic out of the client application.</p>
+      <div style="text-align:center;">
+        <img src="images/apim.06.png" alt="APIM policy XML editor showing full inbound policy with rewrite-uri and llm-token-limit"
+             style="max-width:100%; max-height:52vh; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.08);" />
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: APIM – API Settings (subscription key header, URL suffix) -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">APIM Setup · API Settings</div>
+      <h2>API Settings — subscription key &amp; URL suffix</h2>
+      <p style="margin-bottom:16px;">In the API <strong>Settings</strong> tab, confirm the <em>API URL suffix</em> (e.g. <code>samples/azure-open-ai</code>) and note the <strong>Subscription</strong> section — <em>Subscription required</em> is checked and the <strong>Header name</strong> is <code>Ocp-Apim-Subscription-Key</code>. This is the header your client code must send instead of the Azure OpenAI key.</p>
+      <div style="text-align:center;">
+        <img src="images/apim.07.png" alt="APIM API Settings tab showing API URL suffix and Ocp-Apim-Subscription-Key header name"
+             style="max-width:100%; max-height:55vh; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.08);" />
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 11: APIM – Backend Authorization credentials (Named Value) -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">APIM Setup · Backend Auth</div>
+      <h2>Backend authorization — Azure OpenAI key via Named Value</h2>
+      <p style="margin-bottom:16px;">Under the backend's <strong>Authorization credentials → Headers</strong> tab, APIM injects the <code>api-key</code> header on every outbound request to Azure OpenAI. The value references a <span class="pill pill-orange">Named Value</span> — the real key is stored securely in APIM and is never visible to the client application.</p>
+      <div style="text-align:center;">
+        <img src="images/apim.08.png" alt="APIM backend Authorization credentials showing api-key header mapped to a Named Value"
+             style="max-width:100%; max-height:45vh; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.08);" />
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 12: APIM policy steps (what APIM does) -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">APIM Inbound Policy</div>
+      <h2>What APIM does on every request</h2>
+      <div style="max-width:680px; margin:0 auto;">
+        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Validate subscription key</strong> — rejects callers without a valid Ocp-Apim-Subscription-Key</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Rewrite URL</strong> — prepend <code style="color:#79c0ff; font-family:monospace;">/openai/deployments/gpt-4o</code> to the incoming path</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Add api-version</strong> — appends <code style="color:#79c0ff; font-family:monospace;">?api-version=2024-02-01</code> query parameter</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text"><strong>Inject api-key header</strong> — reads the Azure OpenAI key from a <strong>Named Value</strong> (never sent to the client)</div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-text"><strong>Remove subscription key</strong> — strips Ocp-Apim-Subscription-Key before forwarding to the backend</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 13: KQL – Token usage from APIM request logs -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">App Insights KQL · APIM Requests Table</div>
+      <h2>Token usage by hour — per API and subscription</h2>
+      <p style="margin-bottom:18px;">APIM writes a <code>Response-Body</code> custom dimension to the App Insights <code>requests</code> table. This KQL query parses the OpenAI usage object from the response body to aggregate token consumption by hour, broken down by API name and APIM subscription — giving you a centralised cost view across all callers.</p>
+      <pre><span class="cmt">// App Insights: requests table (written by APIM diagnostics)</span>
+requests
+<span class="kw">| extend</span> total_tokens_ = toint(
+    parse_json(
+        tostring(
+            parse_json(
+                tostring(customDimensions.[<span class="str">"Response-Body"</span>])
+            ).usage
+        )
+    ).total_tokens)
+<span class="kw">| where</span> total_tokens_ &gt; 0
+<span class="kw">| extend</span> API_Name_          = tostring(customDimensions.[<span class="str">"API Name"</span>])
+<span class="kw">| extend</span> Subscription_Name_ = tostring(customDimensions.[<span class="str">"Subscription Name"</span>])
+<span class="kw">| summarize</span> sum(total_tokens_)
+    <span class="kw">by</span> bin(timestamp, 1h), API_Name_, Subscription_Name_</pre>
+      <div style="margin-top:14px; display:flex; gap:12px;">
+        <div style="flex:1; background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:12px 16px; font-size:0.82rem; color:#6b7280; line-height:1.7;">
+          <strong style="color:#92400e;">Why this works</strong><br/>
+          APIM's diagnostics policy logs the full response body to App Insights. The <code>customDimensions["Response-Body"]</code> field contains the raw OpenAI JSON, so <code>parse_json()</code> can extract <code>.usage.total_tokens</code> directly.
+        </div>
+        <div style="flex:1; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:12px 16px; font-size:0.82rem; color:#6b7280; line-height:1.7;">
+          <strong style="color:#166534;">What you get</strong><br/>
+          A time-bucketed table of total tokens grouped by APIM API and subscription name — enabling chargeback, budget alerts, and per-team usage dashboards across every client that calls through the gateway.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 15: Benefits of adding APIM -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Why Add APIM?</div>
+      <h2>Benefits of routing AI calls through API Management</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;">
+        <div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:10px; padding:16px;">
+          <div style="color:#92400e; font-weight:700; font-size:0.9rem; margin-bottom:8px;">🔑 Key Security</div>
+          <ul style="color:#374151; font-size:0.83rem; line-height:1.9; padding-left:16px;">
+            <li>Azure OpenAI key never leaves APIM</li>
+            <li>Clients authenticate with APIM subscription keys only</li>
+            <li>Keys can be rotated in one place — zero client changes</li>
+            <li>Fine-grained subscription scoping per product/team</li>
+          </ul>
+        </div>
+        <div style="background:#dbeafe; border:1px solid #93c5fd; border-radius:10px; padding:16px;">
+          <div style="color:#1d4ed8; font-weight:700; font-size:0.9rem; margin-bottom:8px;">📊 Centralised Observability</div>
+          <ul style="color:#374151; font-size:0.83rem; line-height:1.9; padding-left:16px;">
+            <li>All client traffic funnels into one App Insights instance</li>
+            <li>Token usage tracked across every caller with <code>llm-emit-token-metric</code></li>
+            <li>APIM request logs correlated with OTel traces via <code>operation_Id</code></li>
+            <li>Single dashboard for latency, errors, and cost across all services</li>
+          </ul>
+        </div>
+        <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:10px; padding:16px;">
+          <div style="color:#166534; font-weight:700; font-size:0.9rem; margin-bottom:8px;">⚡ Traffic Control</div>
+          <ul style="color:#374151; font-size:0.83rem; line-height:1.9; padding-left:16px;">
+            <li>Token-per-minute limits per subscription (<code>llm-token-limit</code>)</li>
+            <li>Rate limiting prevents quota exhaustion</li>
+            <li>Retry and circuit-breaker policies in one place</li>
+            <li>Load-balance across multiple Azure OpenAI regions</li>
+          </ul>
+        </div>
+        <div style="background:#f3e8ff; border:1px solid #c4b5fd; border-radius:10px; padding:16px;">
+          <div style="color:#7c3aed; font-weight:700; font-size:0.9rem; margin-bottom:8px;">🔧 Governance &amp; Flexibility</div>
+          <ul style="color:#374151; font-size:0.83rem; line-height:1.9; padding-left:16px;">
+            <li>Swap Azure OpenAI deployments without touching client code</li>
+            <li>URL rewrite keeps client endpoint stable across model upgrades</li>
+            <li>Developer portal provides self-service key management</li>
+            <li>Works with any OpenAI-compatible SDK — no vendor lock-in</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 15: Architecture diagram – multiple clients → APIM → Azure OpenAI → App Insights -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">Architecture</div>
+      <h2>Centralised AI Gateway — multiple clients, one control plane</h2>
+      <div style="margin-top:16px; display:flex; flex-direction:column; align-items:center; gap:0;">
+
+        <!-- Clients row -->
+        <div style="display:flex; gap:16px; justify-content:center;">
+          <div style="background:#f3e8ff; border:1px solid #c4b5fd; border-radius:8px; padding:10px 18px; text-align:center; font-size:0.8rem; font-weight:600; color:#7c3aed; min-width:110px;">🤖 Agent App<br/><span style="font-weight:400; color:#9ca3af; font-size:0.73rem;">sample 06</span></div>
+          <div style="background:#dbeafe; border:1px solid #93c5fd; border-radius:8px; padding:10px 18px; text-align:center; font-size:0.8rem; font-weight:600; color:#1d4ed8; min-width:110px;">🌐 Web App<br/><span style="font-weight:400; color:#9ca3af; font-size:0.73rem;">product team</span></div>
+          <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:10px 18px; text-align:center; font-size:0.8rem; font-weight:600; color:#166534; min-width:110px;">⚙️ Background<br/>Service<br/><span style="font-weight:400; color:#9ca3af; font-size:0.73rem;">batch jobs</span></div>
+          <div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:8px; padding:10px 18px; text-align:center; font-size:0.8rem; font-weight:600; color:#92400e; min-width:110px;">📱 Mobile App<br/><span style="font-weight:400; color:#9ca3af; font-size:0.73rem;">customer-facing</span></div>
+        </div>
+
+        <!-- Arrows down to APIM -->
+        <div style="display:flex; gap:16px; justify-content:center; color:#d0d7de; font-size:1.1rem; padding:4px 0;">
+          <span style="min-width:110px; text-align:center;">↓</span>
+          <span style="min-width:110px; text-align:center;">↓</span>
+          <span style="min-width:110px; text-align:center;">↓</span>
+          <span style="min-width:110px; text-align:center;">↓</span>
+        </div>
+        <div style="color:#6b7280; font-size:0.73rem; text-align:center; margin:-4px 0 2px;">Ocp-Apim-Subscription-Key (unique per client)</div>
+
+        <!-- APIM box -->
+        <div style="background:#fef3c7; border:2px solid #d97706; border-radius:10px; padding:14px 40px; text-align:center; width:560px;">
+          <div style="font-weight:700; color:#92400e; font-size:1rem;">Azure API Management</div>
+          <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:8px;">
+            <span class="pill pill-orange" style="font-size:0.7rem;">llm-token-limit</span>
+            <span class="pill pill-orange" style="font-size:0.7rem;">llm-emit-token-metric</span>
+            <span class="pill pill-orange" style="font-size:0.7rem;">set-backend-service</span>
+            <span class="pill pill-orange" style="font-size:0.7rem;">rewrite-uri</span>
+          </div>
+        </div>
+
+        <!-- Fork: down to Azure OpenAI and right to App Insights -->
+        <div style="display:flex; align-items:flex-start; gap:40px; margin-top:0;">
+          <!-- Left branch: → Azure OpenAI -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0;">
+            <div style="color:#d0d7de; font-size:1.1rem; padding:4px 0;">↓</div>
+            <div style="color:#6b7280; font-size:0.73rem; margin:-2px 0 2px;">api-key (Named Value)</div>
+            <div style="background:#f3e8ff; border:2px solid #8250df; border-radius:10px; padding:14px 28px; text-align:center;">
+              <div style="font-weight:700; color:#8250df; font-size:0.95rem;">Azure OpenAI</div>
+              <div style="color:#9ca3af; font-size:0.75rem; margin-top:4px;">gpt-4o · model inference</div>
+            </div>
+          </div>
+
+          <!-- Right branch: → App Insights -->
+          <div style="display:flex; flex-direction:column; align-items:center; gap:0;">
+            <div style="color:#d0d7de; font-size:1.1rem; padding:4px 0;">↓</div>
+            <div style="color:#6b7280; font-size:0.73rem; margin:-2px 0 2px;">diagnostics + token metrics</div>
+            <div style="background:#dcfce7; border:2px solid #16a34a; border-radius:10px; padding:14px 28px; text-align:center;">
+              <div style="font-weight:700; color:#166534; font-size:0.95rem;">Application Insights</div>
+              <div style="color:#9ca3af; font-size:0.75rem; margin-top:4px;">requests · dependencies · customMetrics</div>
+              <div style="display:flex; gap:6px; justify-content:center; margin-top:6px; flex-wrap:wrap;">
+                <span class="pill pill-green" style="font-size:0.68rem;">all clients</span>
+                <span class="pill pill-green" style="font-size:0.68rem;">token usage</span>
+                <span class="pill pill-green" style="font-size:0.68rem;">latency</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px 20px; font-size:0.78rem; color:#6b7280; text-align:center; max-width:580px;">
+          Every client uses its own APIM subscription key &mdash; the Azure OpenAI key is injected by APIM and never leaves the gateway. All traffic flows into one App Insights workspace.
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 16</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let current = 0;
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsEl.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(n, totalSlides - 1));
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.add('active');
+    document.getElementById('counter').textContent = `${current + 1} / ${totalSlides}`;
+    document.getElementById('prev').disabled = current === 0;
+    document.getElementById('next').disabled = current === totalSlides - 1;
+  }
+  function go(dir) { goTo(current + dir); }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     { e.preventDefault(); go(-1); }
+  });
+</script>
+</body>
+</html>

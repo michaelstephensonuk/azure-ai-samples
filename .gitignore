@@ -1,0 +1,11 @@
+# Build output
+bin/
+obj/
+
+# Local secrets — never commit real keys
+appsettings.json
+
+# Keep the template (no real values) committable
+!appsettings.template.json
+/ReadMe.Ideas.md
+/TODO.md
