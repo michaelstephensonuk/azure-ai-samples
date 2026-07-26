@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OpenTelemetry Data Collector — AI Token Usage in Application Insights</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; overflow-y: auto; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #1d4ed8; margin-bottom: 14px; }
+  h1 { font-size: 2.5rem; font-weight: 700; line-height: 1.15; color: #111827; text-align: center; }
+  h1 span.blue   { color: #1d4ed8; }
+  h1 span.purple { color: #8250df; }
+  h1 span.green  { color: #15803d; }
+  h1 span.orange { color: #b45309; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 24px; }
+  .subtitle { font-size: 1.05rem; color: #6b7280; margin-top: 16px; max-width: 680px; text-align: center; line-height: 1.6; }
+  p { font-size: 0.95rem; color: #6b7280; line-height: 1.7; max-width: 820px; }
+  .content { width: 100%; max-width: 960px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; border-bottom: 2px solid #e5e7eb; }
+  th.blue   { color: #1d4ed8; }
+  th.purple { color: #8250df; }
+  th.green  { color: #15803d; }
+  th.orange { color: #b45309; }
+  th.grey   { color: #6b7280; }
+  td { padding: 8px 10px; font-size: 0.82rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: top; }
+  td:first-child { color: #374151; font-weight: 600; white-space: nowrap; }
+  td code { font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.78rem; color: #0550ae; background:#f0f4ff; padding:1px 5px; border-radius:4px; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px 20px; font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.76rem; line-height: 1.6; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw  { color: #cf222e; }
+  .key { color: #0550ae; }
+  .str { color: #0a3069; }
+  .cmt { color: #6e7781; font-style: italic; }
+  .hi  { color: #1d4ed8; font-weight: 700; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.77rem; font-weight: 600; margin: 3px; }
+  .pill-blue   { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-purple { background: #f3e8ff; color: #7c3aed; border: 1px solid #c4b5fd; }
+  .pill-green  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .pill-orange { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .pill-grey   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; width: 100%; }
+  .cols-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; width: 100%; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+  .col-card { border-radius: 10px; padding: 18px 20px; }
+  .col-purple { background: #faf5ff; border: 2px solid #c4b5fd; }
+  .col-blue   { background: #eff6ff; border: 2px solid #93c5fd; }
+  .col-green  { background: #f0fdf4; border: 2px solid #86efac; }
+  .col-orange { background: #fffbeb; border: 2px solid #fcd34d; }
+  .col-grey   { background: #f9fafb; border: 2px solid #e5e7eb; }
+  .col-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 12px; }
+  .col-purple .col-title { color: #7c3aed; }
+  .col-blue   .col-title { color: #1d4ed8; }
+  .col-green  .col-title { color: #15803d; }
+  .col-orange .col-title { color: #b45309; }
+  .col-grey   .col-title { color: #374151; }
+  .col-item { font-size: 0.82rem; color: #374151; line-height: 1.55; margin-bottom: 6px; padding-left: 14px; position: relative; }
+  .col-item::before { content: '•'; position: absolute; left: 0; color: #9ca3af; }
+  .col-item.num { padding-left: 22px; }
+  .col-item.num::before { content: attr(data-n); font-weight: 700; color: #1d4ed8; left: 0; }
+
+  .callout { border-radius: 8px; padding: 10px 16px; font-size: 0.8rem; }
+  .callout-amber  { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .callout-blue   { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout-green  { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+  .callout-grey   { background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; }
+  .callout-purple { background: #faf5ff; border: 1px solid #c4b5fd; color: #6b21a8; }
+
+  .flow { display: flex; align-items: center; gap: 0; width: 100%; flex-wrap: nowrap; margin: 16px 0; }
+  .flow-box { background: #eff6ff; border: 2px solid #93c5fd; border-radius: 8px; padding: 10px 14px; font-size: 0.78rem; font-weight: 600; color: #1d4ed8; text-align: center; flex: 1; }
+  .flow-box.green  { background: #f0fdf4; border-color: #86efac; color: #15803d; }
+  .flow-box.purple { background: #faf5ff; border-color: #c4b5fd; color: #7c3aed; }
+  .flow-box.orange { background: #fffbeb; border-color: #fcd34d; color: #b45309; }
+  .flow-box.grey   { background: #f9fafb; border-color: #e5e7eb; color: #374151; }
+  .flow-arrow { font-size: 1.2rem; color: #9ca3af; padding: 0 6px; flex-shrink: 0; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #1d4ed8; color: #1d4ed8; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #1d4ed8; }
+  .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 20</div>
+    <div class="tag">OpenTelemetry · Application Insights · AI Token Visibility</div>
+    <h1>Monitor <span class="blue">AI Token Usage</span><br/>from VS Code via<br/><span class="purple">OpenTelemetry</span> + <span class="green">Application Insights</span></h1>
+    <p class="subtitle">Capture GitHub Copilot and Claude Code telemetry on your dev machine, forward it through the OpenTelemetry Collector Windows service, and visualise it in Application Insights, Azure Workbooks, Grafana, or Turbo360.</p>
+    <div style="margin-top:36px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-blue">OTel Collector Contrib</span>
+      <span class="pill pill-green">Azure Monitor Exporter</span>
+      <span class="pill pill-purple">GitHub Copilot</span>
+      <span class="pill pill-purple">Claude Code</span>
+      <span class="pill pill-orange">KQL Dashboards</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: The problem -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">The Problem</div>
+      <h2>Why monitor AI usage from VS Code?</h2>
+      <div class="cols-3">
+        <div class="col-card col-orange">
+          <div class="col-title">No visibility by default</div>
+          <div class="col-item">GitHub Copilot and Claude Code consume tokens every time you use AI features in VS Code</div>
+          <div class="col-item">Out of the box there is no central record of how many tokens are being used, by whom, or for what</div>
+        </div>
+        <div class="col-card col-orange">
+          <div class="col-title">Cost and quota risk</div>
+          <div class="col-item">Token consumption directly drives cost in pay-per-use models</div>
+          <div class="col-item">Without measurement you cannot optimise, forecast, or set guardrails</div>
+        </div>
+        <div class="col-card col-orange">
+          <div class="col-title">No standard tooling</div>
+          <div class="col-item">VS Code AI extensions do not natively ship telemetry to Application Insights or any central store</div>
+          <div class="col-item">You need a lightweight local bridge to capture and forward that data</div>
+        </div>
+      </div>
+      <div class="callout callout-blue" style="margin-top:18px;">
+        <strong>Goal:</strong> monitor, manage, and optimise token utilisation across your development team — starting with a single dev machine, scalable to an entire organisation.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: How it works — overview -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Architecture</div>
+      <h2>How it works — end to end</h2>
+      <div class="flow" style="margin-bottom:24px;">
+        <div class="flow-box purple">VS Code<br/><small>Copilot / Claude Code</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box grey">HTTP (localhost)<br/><small>port 4317 / 4318</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box blue">OTel Collector<br/><small>Windows Service</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box green">Azure Monitor<br/><small>Exporter</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box orange">Application<br/><small>Insights</small></div>
+      </div>
+      <div class="cols-3">
+        <div class="col-card col-grey">
+          <div class="col-title">1 · VS Code settings</div>
+          <div class="col-item">Configure GitHub Copilot and/or Claude Code to send OpenTelemetry over local HTTP to the collector</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">2 · OTel Collector (Windows service)</div>
+          <div class="col-item">Receives traces, metrics, and logs via OTLP on <code>localhost:4317</code> (gRPC) or <code>localhost:4318</code> (HTTP)</div>
+          <div class="col-item">Batches and forwards to Application Insights via the Azure Monitor exporter</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">3 · Application Insights</div>
+          <div class="col-item">Data lands in <code>dependencies</code>, <code>traces</code>, <code>customMetrics</code>, and <code>customEvents</code> tables</div>
+          <div class="col-item">Query with KQL, visualise in Workbooks, Grafana, or Turbo360</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Setup step 1 — install -->
+  <div class="slide">
+    <div class="content" style="max-width:860px;">
+      <div class="tag">Setup · Step 1</div>
+      <h2>Install the OpenTelemetry Collector Contrib</h2>
+      <p style="margin-bottom:16px;">Use the <strong>contrib</strong> distribution — it bundles the Azure Monitor exporter out of the box. Run this command to download and install the Windows service:</p>
+      <pre><span class="cmt"># Download and install the OTel Collector Contrib MSI</span>
+msiexec /i "https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.157.0/otelcol-contrib_0.157.0_windows_x64.msi"</pre>
+      <div class="callout callout-blue" style="margin-top:16px; margin-bottom:16px;">
+        The installer registers a Windows service called <strong>OpenTelemetry Collector Contrib</strong> and installs config files under <code>C:\Program Files\OpenTelemetry Collector Contrib\</code>
+      </div>
+      <div class="two-col">
+        <div class="col-card col-grey">
+          <div class="col-title">Why contrib?</div>
+          <div class="col-item">The standard distribution does not include the Azure Monitor exporter</div>
+          <div class="col-item">The contrib build bundles every community exporter, including <code>azuremonitor</code></div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Reference</div>
+          <div class="col-item"><a href="https://opentelemetry.io/docs/collector/install/binary/windows/" style="color:#1d4ed8;">opentelemetry.io — Windows install guide</a></div>
+          <div class="col-item"><a href="https://opentelemetry.io/docs/collector/components/exporter/" style="color:#1d4ed8;">opentelemetry.io — Exporter components</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Setup step 2 — config.yaml -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Setup · Step 2</div>
+      <h2>Configure config.yaml — add the Azure Monitor exporter</h2>
+      <p style="margin-bottom:14px;">Edit <code>C:\Program Files\OpenTelemetry Collector Contrib\config.yaml</code> and add the exporter and pipeline entries:</p>
+      <div class="two-col" style="gap:14px;">
+        <div>
+          <div style="font-size:0.8rem;font-weight:700;color:#374151;margin-bottom:6px;">Add the exporter</div>
+          <pre><span class="key">exporters</span>:
+  <span class="hi">azuremonitor</span>:
+    <span class="key">connection_string</span>: <span class="str">"InstrumentationKey=&lt;KEY&gt;;IngestionEndpoint=https://&lt;region&gt;.in.applicationinsights.azure.com/;LiveEndpoint=https://&lt;region&gt;.livediagnostics.monitor.azure.com/"</span>
+    <span class="key">maxbatchsize</span>: 1024
+    <span class="key">maxbatchinterval</span>: 10s
+    <span class="key">spaneventsenabled</span>: <span class="kw">false</span></pre>
+        </div>
+        <div>
+          <div style="font-size:0.8rem;font-weight:700;color:#374151;margin-bottom:6px;">Wire it into pipelines</div>
+          <pre><span class="key">pipelines</span>:
+
+  <span class="key">traces</span>:
+    <span class="key">receivers</span>: [otlp, jaeger, zipkin]
+    <span class="key">processors</span>: [batch]
+    <span class="key">exporters</span>: [<span class="hi">azuremonitor</span>]
+
+  <span class="key">metrics</span>:
+    <span class="key">receivers</span>: [otlp, prometheus]
+    <span class="key">processors</span>: [batch]
+    <span class="key">exporters</span>: [<span class="hi">azuremonitor</span>]
+
+  <span class="key">logs</span>:
+    <span class="key">receivers</span>: [otlp]
+    <span class="key">processors</span>: [batch]
+    <span class="key">exporters</span>: [<span class="hi">azuremonitor</span>]</pre>
+        </div>
+      </div>
+      <div class="callout callout-amber" style="margin-top:12px;">
+        Tip: comment out or remove the <code>debug</code> exporter to avoid flooding the Windows Event Viewer.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: Setup step 3 — restart and VS Code -->
+  <div class="slide">
+    <div class="content" style="max-width:860px;">
+      <div class="tag">Setup · Steps 3 &amp; 4</div>
+      <h2>Restart the service &amp; configure VS Code</h2>
+      <div class="two-col">
+        <div class="col-card col-blue">
+          <div class="col-title">Step 3 — Restart the Windows service</div>
+          <div class="col-item">Open <strong>services.msc</strong></div>
+          <div class="col-item">Find <strong>OpenTelemetry Collector Contrib</strong></div>
+          <div class="col-item">Click <strong>Restart</strong> — the new config.yaml is loaded on startup</div>
+          <div class="col-item" style="margin-top:8px;">Don't skip this step — the service reads config once at start; changes are ignored while running</div>
+        </div>
+        <div class="col-card col-purple">
+          <div class="col-title">Step 4 — Configure VS Code AI extensions</div>
+          <div class="col-item">In VS Code settings, enable OpenTelemetry export for <strong>GitHub Copilot</strong> and/or <strong>Claude Code</strong></div>
+          <div class="col-item">Point each extension at <code>http://localhost:4318</code> (OTLP/HTTP) or <code>localhost:4317</code> (OTLP/gRPC)</div>
+          <div class="col-item">From this point every AI feature invocation sends a local HTTP call to the collector Windows service</div>
+        </div>
+      </div>
+      <div class="callout callout-grey" style="margin-top:18px;">
+        The collector listens on <strong>localhost only</strong> — telemetry never leaves the machine until the Azure Monitor exporter forwards it. There is no external exposure.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Verify -->
+  <div class="slide">
+    <div class="content" style="max-width:820px;">
+      <div class="tag">Setup · Verify</div>
+      <h2>Verify the Azure Monitor exporter is active</h2>
+      <p style="margin-bottom:16px;">The collector exposes a Prometheus-format metrics endpoint at:</p>
+      <pre>http://127.0.0.1:8888/metrics</pre>
+      <p style="margin: 16px 0;">Open that URL in a browser. Look for <strong>azuremonitor</strong> in the output — if it appears, the exporter is registered and running.</p>
+      <div class="cols-3">
+        <div class="col-card col-grey">
+          <div class="col-title">Health check</div>
+          <div class="col-item">Extensions endpoint: <code>http://127.0.0.1:55679/debug/extensions</code></div>
+          <div class="col-item">zpages trace viewer: <code>http://127.0.0.1:55679/debug/tracez</code></div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">pprof profiling</div>
+          <div class="col-item">Available at <code>http://127.0.0.1:1777/debug/pprof</code></div>
+          <div class="col-item">Useful if the collector process is consuming unexpected CPU</div>
+        </div>
+        <div class="col-card col-green">
+          <div class="col-title">Application Insights check</div>
+          <div class="col-item">Open App Insights → <strong>Transaction Search</strong></div>
+          <div class="col-item">Trigger a Copilot or Claude Code action in VS Code</div>
+          <div class="col-item">Events should appear within ~30 seconds</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Data tables in App Insights -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Application Insights</div>
+      <h2>Where your data lands in Application Insights</h2>
+      <table>
+        <thead>
+          <tr>
+            <th class="grey">Table</th>
+            <th class="grey">What it contains</th>
+            <th class="grey">Typical use</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>dependencies</code></td>
+            <td>Each LLM call as a dependency span — model, duration, status</td>
+            <td>Latency analysis, failure rates, per-model breakdown</td>
+          </tr>
+          <tr>
+            <td><code>traces</code></td>
+            <td>Log messages emitted during AI operations</td>
+            <td>Debug context, prompt/response content (if sensitive data enabled)</td>
+          </tr>
+          <tr>
+            <td><code>customMetrics</code></td>
+            <td>Token counts — <code>gen_ai.client.token.usage</code> (input, output, total)</td>
+            <td>Token consumption over time, cost modelling, quota alerts</td>
+          </tr>
+          <tr>
+            <td><code>customEvents</code></td>
+            <td>Higher-level agent events if emitted by the extension</td>
+            <td>Feature usage patterns, session analysis</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout callout-blue" style="margin-top:16px;">
+        The <code>customMetrics</code> table is the primary source for token utilisation reporting. Join it with <code>dependencies</code> on <code>operation_Id</code> to correlate usage with specific model calls.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: KQL and dashboards -->
+  <div class="slide">
+    <div class="content" style="max-width:880px;">
+      <div class="tag">Visualisation</div>
+      <h2>Query &amp; visualise with KQL</h2>
+      <p style="margin-bottom:14px;">Once data is in Application Insights you can write KQL queries and publish them to any of these dashboard tools:</p>
+      <div class="cols-3" style="margin-bottom:18px;">
+        <div class="col-card col-blue">
+          <div class="col-title">Azure Workbooks</div>
+          <div class="col-item">Native to Application Insights — no extra setup</div>
+          <div class="col-item">Rich chart types, time-range pickers, parameter filters</div>
+          <div class="col-item">Share via Azure RBAC</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Grafana</div>
+          <div class="col-item">Use the Azure Monitor data source</div>
+          <div class="col-item">Mix AI token metrics with infrastructure metrics on one board</div>
+          <div class="col-item">Strong alerting integrations</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Turbo360</div>
+          <div class="col-item">Business-friendly dashboards on top of Azure Monitor</div>
+          <div class="col-item">Good for executive token cost reporting</div>
+        </div>
+      </div>
+      <pre><span class="cmt">// Example: daily token usage by AI tool</span>
+<span class="key">customMetrics</span>
+| <span class="kw">where</span> name == <span class="str">"gen_ai.client.token.usage"</span>
+| <span class="kw">summarize</span> totalTokens = <span class="kw">sum</span>(value)
+        <span class="kw">by</span> <span class="key">bin</span>(timestamp, 1d),
+           tool = tostring(customDimensions[<span class="str">"gen_ai.system"</span>])
+| <span class="kw">render</span> columnchart</pre>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: Summary -->
+  <div class="slide">
+    <div class="content" style="max-width:860px;">
+      <div class="tag">Summary</div>
+      <h2>Setup in four steps</h2>
+      <div class="col-card col-blue" style="margin-bottom:18px;">
+        <div class="col-item num" data-n="1.">Install <strong>OTel Collector Contrib</strong> MSI — registers a Windows service that listens on localhost</div>
+        <div class="col-item num" data-n="2.">Edit <strong>config.yaml</strong> — add the <code>azuremonitor</code> exporter with your App Insights connection string, and wire it into the traces / metrics / logs pipelines</div>
+        <div class="col-item num" data-n="3.">Restart the <strong>Windows service</strong> (services.msc) to pick up the new config</div>
+        <div class="col-item num" data-n="4.">Configure <strong>VS Code</strong> GitHub Copilot and/or Claude Code settings to send OTel to <code>localhost:4318</code></div>
+      </div>
+      <div class="cols-3">
+        <div class="col-card col-grey">
+          <div class="col-title">Verify</div>
+          <div class="col-item"><code>http://127.0.0.1:8888/metrics</code> — confirm <code>azuremonitor</code> exporter is listed</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Data lands in</div>
+          <div class="col-item"><code>dependencies</code>, <code>traces</code>, <code>customMetrics</code>, <code>customEvents</code> tables in App Insights</div>
+        </div>
+        <div class="col-card col-green">
+          <div class="col-title">Outcome</div>
+          <div class="col-item">Monitor, manage, and optimise token utilisation across your development team with full KQL and dashboard support</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 10</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dotsEl = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  let cur = 0;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => show(i);
+    dotsEl.appendChild(d);
+  });
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    dotsEl.children[cur].classList.remove('active');
+    cur = n;
+    slides[cur].classList.add('active');
+    dotsEl.children[cur].classList.add('active');
+    counter.textContent = (cur + 1) + ' / ' + slides.length;
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === slides.length - 1;
+  }
+
+  function go(d) { if (cur + d >= 0 && cur + d < slides.length) show(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+</script>
+</body>
+</html>

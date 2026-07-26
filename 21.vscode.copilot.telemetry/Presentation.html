@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>21 · VS Code Copilot Telemetry — OpenTelemetry</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #0969da; margin-bottom: 14px; }
+  h1 { font-size: 3rem; font-weight: 700; line-height: 1.15; color: #111827; }
+  h1 span { color: #0969da; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 28px; }
+  .subtitle { font-size: 1.15rem; color: #6b7280; margin-top: 16px; max-width: 680px; text-align: center; line-height: 1.6; }
+  p { font-size: 1.05rem; color: #6b7280; line-height: 1.7; max-width: 780px; }
+  .content { width: 100%; max-width: 860px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th { text-align: left; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: #0969da; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 10px 12px; font-size: 0.95rem; border-bottom: 1px solid #f3f4f6; color: #111827; vertical-align: top; }
+  td:first-child { color: #0550ae; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.85rem; white-space: nowrap; }
+  td:last-child { color: #6b7280; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 20px 24px; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.83rem; line-height: 1.65; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw { color: #cf222e; } .type { color: #0550ae; } .str { color: #0a3069; } .cmt { color: #6e7781; font-style: italic; } .mth { color: #8250df; } .var { color: #24292f; }
+
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+  .box { background: #f9fafb; border: 1px solid #d0d7de; border-radius: 8px; padding: 12px 20px; font-size: 0.88rem; text-align: center; min-width: 120px; color: #111827; }
+  .box.blue { border-color: #0969da; background: #dbeafe; color: #1e40af; }
+  .box.green { border-color: #2da44e; background: #dcfce7; color: #166534; }
+  .box.purple { border-color: #8250df; background: #f3e8ff; color: #6f42c1; }
+  .box.orange { border-color: #d97706; background: #fef3c7; color: #92400e; }
+  .box small { display: block; color: #6b7280; font-size: 0.75rem; margin-top: 3px; }
+  .arrow { color: #d0d7de; font-size: 1.5rem; margin: 0 6px; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; margin: 3px; }
+  .pill-blue { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-green { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .pill-orange { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .pill-purple { background: #f3e8ff; color: #6f42c1; border: 1px solid #d8b4fe; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #0969da; color: #0969da; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #0969da; }
+
+  .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+
+  .signal-row { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .signal { flex: 1; min-width: 180px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; }
+  .signal .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #0969da; margin-bottom: 6px; font-weight: 600; }
+  .signal .name { font-family: 'Cascadia Code', monospace; font-size: 0.82rem; color: #0550ae; margin-bottom: 4px; }
+  .signal .desc { font-size: 0.82rem; color: #6b7280; }
+
+  .cols2 { display: flex; gap: 24px; width: 100%; }
+  .cols2 > * { flex: 1; }
+</style>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false, theme: 'default' });
+  window.__mermaidInit = async () => {
+    await mermaid.run({ querySelector: '.slide.active .mermaid' });
+  };
+  window.__mermaidInit();
+</script>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 21 · VS Code Copilot Telemetry</div>
+    <div class="tag">OpenTelemetry · GitHub Copilot · Application Insights</div>
+    <h1><span>VS Code Copilot</span> Telemetry</h1>
+    <p class="subtitle">Stream every GitHub Copilot Chat interaction — prompts, completions, token counts, and latency — to your own OpenTelemetry Collector and on into Application Insights.</p>
+    <div style="margin-top:40px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-blue">github.copilot.chat.otel.*</span>
+      <span class="pill pill-blue">COPILOT_OTEL_* env vars</span>
+      <span class="pill pill-purple">OTEL Collector (sample 20)</span>
+      <span class="pill pill-orange">App Insights</span>
+      <span class="pill pill-green">captureContent</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: Why capture Copilot telemetry -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Overview</div>
+      <h2>Why capture Copilot telemetry?</h2>
+      <p style="margin-bottom:24px;">GitHub Copilot Chat already emits OpenTelemetry spans internally. Enabling export lets you send those spans to <em>your own</em> collector — giving you visibility that is otherwise hidden inside the extension.</p>
+      <table>
+        <thead><tr><th>What you get</th><th>Why it matters</th></tr></thead>
+        <tbody>
+          <tr><td>Token counts per interaction</td><td>Track consumption and forecast cost across your team</td></tr>
+          <tr><td>Latency per AI call</td><td>Spot slow models or degraded endpoints</td></tr>
+          <tr><td>Prompt + response content</td><td>Debug agent outputs and review AI-generated content (opt-in)</td></tr>
+          <tr><td>Resource attributes per session</td><td>Tag spans with feature name, work item ID, team, cost centre</td></tr>
+          <tr><td>End-to-end trace context</td><td>Correlate Copilot spans with your own app traces in App Insights</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: How it works (architecture) -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Architecture</div>
+      <h2>How the telemetry flows</h2>
+      <div class="flow" style="flex-direction:column; gap:14px; align-items:center; margin-bottom:28px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="box blue" style="min-width:200px;">VS Code<small>GitHub Copilot extension</small></div>
+          <div class="arrow">→</div>
+          <div class="box purple" style="min-width:200px;">OTel Collector<small>localhost:4318 (HTTP) — sample 20</small></div>
+          <div class="arrow">→</div>
+          <div class="box orange" style="min-width:200px;">Application Insights<small>Azure Monitor</small></div>
+        </div>
+        <div style="text-align:center; max-width:680px;">
+          <p style="font-size:0.88rem;">The Copilot extension is configured via <code style="color:#0550ae; font-family:monospace;">settings.json</code> or environment variables to export OTLP spans over HTTP to the collector. The collector (see sample 20) forwards them to Azure Monitor.</p>
+        </div>
+      </div>
+      <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:14px 18px;">
+        <p style="font-size:0.88rem; color:#166534;"><strong>Pre-requisite:</strong> The OpenTelemetry Collector from sample 20 must be running and listening on <code style="color:#0550ae; font-family:monospace;">http://localhost:4318</code> before you open VS Code.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Workspace / User settings -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Configuration — Settings</div>
+      <h2>Configure via VS Code settings</h2>
+      <p style="margin-bottom:20px;">Add to <code style="color:#0550ae; font-family:monospace;">.vscode/settings.json</code> for workspace scope, or to <code style="color:#0550ae; font-family:monospace;">%APPDATA%\Code\User\settings.json</code> for all workspaces.</p>
+      <pre>{
+  <span class="str">"github.copilot.chat.otel.enabled"</span>:        <span class="kw">true</span>,
+  <span class="str">"github.copilot.chat.otel.exporterType"</span>:   <span class="str">"otlp-http"</span>,
+  <span class="str">"github.copilot.chat.otel.otlpEndpoint"</span>:  <span class="str">"http://localhost:4318"</span>,
+  <span class="str">"github.copilot.chat.otel.captureContent"</span>: <span class="kw">true</span>
+}</pre>
+      <div style="margin-top:18px; display:flex; gap:12px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:200px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:14px;">
+          <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; color:#0969da; margin-bottom:6px;">Workspace scope</div>
+          <p style="font-size:0.85rem; color:#6b7280;">Settings in <code style="color:#0550ae; font-family:monospace;">.vscode/settings.json</code> only apply to that project. Commit to source control to share with the team.</p>
+        </div>
+        <div style="flex:1; min-width:200px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:14px;">
+          <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; color:#0969da; margin-bottom:6px;">User scope</div>
+          <p style="font-size:0.85rem; color:#6b7280;">User settings apply to every project on this machine. Open with <code style="color:#0550ae; font-family:monospace;">Ctrl+Shift+P</code> → <em>Preferences: Open User Settings (JSON)</em>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Environment variables -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Configuration — Environment Variables</div>
+      <h2>Configure via environment variables</h2>
+      <p style="margin-bottom:20px;">Environment variables override or replace settings.json — useful for shared machines, CI, or scripted deployments. Restart VS Code after setting them.</p>
+      <table style="margin-bottom:20px;">
+        <thead><tr><th>Environment Variable</th><th>Equivalent Setting</th><th>Example Value</th></tr></thead>
+        <tbody>
+          <tr><td>COPILOT_OTEL_ENABLED</td><td>github.copilot.chat.otel.enabled</td><td style="color:#166534;">true</td></tr>
+          <tr><td>COPILOT_OTEL_EXPORTER_TYPE</td><td>github.copilot.chat.otel.exporterType</td><td style="color:#166534;">otlp-http</td></tr>
+          <tr><td>COPILOT_OTEL_OTLP_ENDPOINT</td><td>github.copilot.chat.otel.otlpEndpoint</td><td style="color:#166534;">http://localhost:4318</td></tr>
+          <tr><td>COPILOT_OTEL_CAPTURE_CONTENT</td><td>github.copilot.chat.otel.captureContent</td><td style="color:#166534;">true</td></tr>
+        </tbody>
+      </table>
+      <pre><span class="cmt"># PowerShell — current user</span>
+[<span class="type">System.Environment</span>]::<span class="mth">SetEnvironmentVariable</span>(<span class="str">"COPILOT_OTEL_ENABLED"</span>,        <span class="str">"true"</span>,          <span class="str">"User"</span>)
+[<span class="type">System.Environment</span>]::<span class="mth">SetEnvironmentVariable</span>(<span class="str">"COPILOT_OTEL_EXPORTER_TYPE"</span>,  <span class="str">"otlp-http"</span>,     <span class="str">"User"</span>)
+[<span class="type">System.Environment</span>]::<span class="mth">SetEnvironmentVariable</span>(<span class="str">"COPILOT_OTEL_OTLP_ENDPOINT"</span>,  <span class="str">"http://localhost:4318"</span>, <span class="str">"User"</span>)
+[<span class="type">System.Environment</span>]::<span class="mth">SetEnvironmentVariable</span>(<span class="str">"COPILOT_OTEL_CAPTURE_CONTENT"</span>, <span class="str">"true"</span>,          <span class="str">"User"</span>)</pre>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: What each setting means -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Settings Reference</div>
+      <h2>What each setting does</h2>
+      <table>
+        <thead><tr><th>Setting</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>otel.enabled</td>
+            <td style="color:#6b7280; white-space:nowrap;">boolean</td>
+            <td>Turns OTel export on or off. Set <code style="color:#0550ae; font-family:monospace;">false</code> to disable without removing the other settings.</td>
+          </tr>
+          <tr>
+            <td>otel.exporterType</td>
+            <td style="color:#6b7280; white-space:nowrap;">string</td>
+            <td><code style="color:#0550ae; font-family:monospace;">otlp-http</code> sends spans over HTTP (port 4318). Use <code style="color:#0550ae; font-family:monospace;">otlp-grpc</code> for gRPC (port 4317). <code style="color:#0550ae; font-family:monospace;">otlp-http</code> is most compatible.</td>
+          </tr>
+          <tr>
+            <td>otel.otlpEndpoint</td>
+            <td style="color:#6b7280; white-space:nowrap;">string</td>
+            <td>URL of your OTel Collector. <code style="color:#0550ae; font-family:monospace;">http://localhost:4318</code> targets the Windows service from sample 20. Change host/port if your collector is elsewhere.</td>
+          </tr>
+          <tr>
+            <td>otel.captureContent</td>
+            <td style="color:#6b7280; white-space:nowrap;">boolean</td>
+            <td>When <code style="color:#0550ae; font-family:monospace;">true</code>, the actual prompt and response text are included in spans as <code style="color:#0550ae; font-family:monospace;">gen_ai.prompt</code> and <code style="color:#0550ae; font-family:monospace;">gen_ai.completion</code>. Useful for debugging but means sensitive content reaches App Insights.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:18px; background:#fff7ed; border:1px solid #fcd34d; border-radius:8px; padding:14px 18px;">
+        <p style="font-size:0.88rem; color:#92400e;"><strong>&#9888; Content capture:</strong> Only enable <code style="color:#0550ae; font-family:monospace;">captureContent</code> when you understand that prompt and response text will be stored in Application Insights. Review your organisation's data handling policies before enabling.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Sequence diagram -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Message Sequence</div>
+      <h2>Step-by-step flow</h2>
+      <div class="mermaid" style="background:#f6f8fa; border:1px solid #d0d7de; border-radius:10px; padding:20px; overflow:auto; max-height:60vh;">
+sequenceDiagram
+    participant Dev as Developer
+    participant Code as VS Code
+    participant Copilot as Copilot Extension
+    participant Collector as OTel Collector&lt;br/&gt;(sample 20)
+    participant AppIns as Application Insights
+
+    Dev->>Code: Open VS Code
+    Note over Code,Copilot: Extension host reads settings.json at startup&lt;br/&gt;otel.enabled=true, exporterType=otlp-http, endpoint=localhost:4318
+
+    Dev->>Copilot: Ask a question in Copilot Chat
+    Copilot->>Copilot: Calls AI model, records span
+    Note over Copilot: Attaches gen_ai.prompt, gen_ai.completion&lt;br/&gt;token counts, latency (when captureContent=true)
+
+    Copilot->>Collector: OTLP/HTTP POST to localhost:4318
+    Collector->>AppIns: Export via Azure Monitor exporter
+
+    Dev->>AppIns: Query in Log Analytics / Transaction Search
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: What you see in App Insights -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Observability Output</div>
+      <h2>What you see in Application Insights</h2>
+      <div class="signal-row">
+        <div class="signal">
+          <div class="label">Trace · Dependency</div>
+          <div class="name">gen_ai / chat</div>
+          <div class="desc">One span per Copilot model call. Includes model name, token counts, latency.</div>
+        </div>
+        <div class="signal">
+          <div class="label">Span attribute</div>
+          <div class="name">gen_ai.prompt</div>
+          <div class="desc">The prompt text sent to the model. Only present when captureContent = true.</div>
+        </div>
+        <div class="signal">
+          <div class="label">Span attribute</div>
+          <div class="name">gen_ai.completion</div>
+          <div class="desc">The model response text. Only present when captureContent = true.</div>
+        </div>
+        <div class="signal">
+          <div class="label">Span attribute</div>
+          <div class="name">gen_ai.request.model</div>
+          <div class="desc">The model that handled the request, e.g. gpt-4o or claude-3-7-sonnet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: KQL queries -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">Log Analytics / KQL</div>
+      <h2>Useful queries</h2>
+      <div style="display:flex; gap:16px; flex-direction:column;">
+        <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px 18px;">
+          <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#0969da; margin-bottom:8px;">All Copilot AI calls — with token counts and prompts</div>
+          <pre style="margin:0; font-size:0.76rem; line-height:1.55; white-space:pre-wrap;"><span class="kw">dependencies</span>
+<span class="cmt">| extend</span> model        = tostring(customDimensions[<span class="str">"gen_ai.request.model"</span>])
+<span class="cmt">| extend</span> inputTokens  = toint(customDimensions[<span class="str">"gen_ai.usage.input_tokens"</span>])
+<span class="cmt">| extend</span> outputTokens = toint(customDimensions[<span class="str">"gen_ai.usage.output_tokens"</span>])
+<span class="cmt">| extend</span> prompt       = tostring(customDimensions[<span class="str">"gen_ai.prompt"</span>])
+<span class="cmt">| project</span> timestamp, model, inputTokens, outputTokens, duration, prompt
+<span class="cmt">| order by</span> timestamp <span class="kw">desc</span></pre>
+        </div>
+        <div style="display:flex; gap:16px;">
+          <div style="flex:1; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px 18px;">
+            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#0969da; margin-bottom:8px;">Token usage by model · per hour</div>
+            <pre style="margin:0; font-size:0.76rem; line-height:1.55; white-space:pre-wrap;"><span class="kw">dependencies</span>
+<span class="cmt">| extend</span> model        = tostring(
+    customDimensions[<span class="str">"gen_ai.request.model"</span>])
+<span class="cmt">| extend</span> inputTokens  = toint(
+    customDimensions[<span class="str">"gen_ai.usage.input_tokens"</span>])
+<span class="cmt">| extend</span> outputTokens = toint(
+    customDimensions[<span class="str">"gen_ai.usage.output_tokens"</span>])
+<span class="cmt">| summarize</span>
+    totalIn  = sum(inputTokens),
+    totalOut = sum(outputTokens)
+    by model, bin(timestamp, 1h)
+<span class="cmt">| order by</span> timestamp <span class="kw">desc</span></pre>
+          </div>
+          <div style="flex:1; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px 18px;">
+            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#0969da; margin-bottom:8px;">Slowest AI calls · p95 latency</div>
+            <pre style="margin:0; font-size:0.76rem; line-height:1.55; white-space:pre-wrap;"><span class="kw">dependencies</span>
+<span class="cmt">| extend</span> model = tostring(
+    customDimensions[<span class="str">"gen_ai.request.model"</span>])
+<span class="cmt">| summarize</span>
+    p95 = percentile(duration, 95),
+    avg = avg(duration),
+    calls = count()
+    by model
+<span class="cmt">| order by</span> p95 <span class="kw">desc</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: Summary / links -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Summary</div>
+      <h2>Quick-start checklist</h2>
+      <table style="margin-bottom:24px;">
+        <thead><tr><th>#</th><th>Step</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr><td style="color:#166534;">1</td><td>Start the OTel Collector (sample 20)</td><td style="color:#6b7280;">Windows service / Docker</td></tr>
+          <tr><td style="color:#166534;">2</td><td>Add the four settings to <code style="color:#0550ae; font-family:monospace;">settings.json</code> or set env vars</td><td style="color:#6b7280;">Workspace or User scope</td></tr>
+          <tr><td style="color:#166534;">3</td><td>Ask a question in Copilot Chat</td><td style="color:#6b7280;">VS Code</td></tr>
+          <tr><td style="color:#166534;">4</td><td>Query spans in Log Analytics</td><td style="color:#6b7280;">Azure Portal → App Insights → Logs</td></tr>
+        </tbody>
+      </table>
+      <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px 18px;">
+        <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; color:#0969da; margin-bottom:8px;">Further reading</div>
+        <p style="font-size:0.88rem; color:#6b7280;"><a href="https://github.com/microsoft/vscode-copilot-chat/blob/main/docs/monitoring/agent_monitoring.md" style="color:#0969da;">github.com/microsoft/vscode-copilot-chat — agent_monitoring.md</a></p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 10</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let current = 0;
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsEl.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(n, totalSlides - 1));
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.add('active');
+    document.getElementById('counter').textContent = `${current + 1} / ${totalSlides}`;
+    document.getElementById('prev').disabled = current === 0;
+    document.getElementById('next').disabled = current === totalSlides - 1;
+    if (window.__mermaidInit) window.__mermaidInit();
+  }
+  function go(dir) { goTo(current + dir); }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     { e.preventDefault(); go(-1); }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sample 09 — Hello World Agent SDK via APIM (Microsoft Agent Framework)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; overflow-y: auto; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #1d4ed8; margin-bottom: 14px; }
+  h1 { font-size: 2.6rem; font-weight: 700; line-height: 1.15; color: #111827; text-align: center; }
+  h1 span.blue { color: #1d4ed8; }
+  h1 span.purple { color: #8250df; }
+  h1 span.green { color: #15803d; }
+  h1 span.orange { color: #b45309; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 24px; }
+  .subtitle { font-size: 1.05rem; color: #6b7280; margin-top: 16px; max-width: 680px; text-align: center; line-height: 1.6; }
+  p { font-size: 0.95rem; color: #6b7280; line-height: 1.7; max-width: 820px; }
+  .content { width: 100%; max-width: 960px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; border-bottom: 2px solid #e5e7eb; }
+  th.blue   { color: #1d4ed8; }
+  th.purple { color: #8250df; }
+  th.green  { color: #15803d; }
+  th.orange { color: #b45309; }
+  th.grey   { color: #6b7280; }
+  td { padding: 8px 10px; font-size: 0.82rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: top; }
+  td:first-child { color: #374151; font-weight: 600; white-space: nowrap; }
+  td code { font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.78rem; color: #0550ae; background:#f0f4ff; padding:1px 5px; border-radius:4px; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px 20px; font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.78rem; line-height: 1.6; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw { color: #cf222e; } .type { color: #0550ae; } .str { color: #0a3069; } .cmt { color: #6e7781; font-style: italic; } .mth { color: #8250df; } .hi { color: #1d4ed8; font-weight: 700; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.77rem; font-weight: 600; margin: 3px; }
+  .pill-blue   { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-purple { background: #f3e8ff; color: #7c3aed; border: 1px solid #c4b5fd; }
+  .pill-green  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .pill-orange { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .pill-grey   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; width: 100%; }
+  .cols-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; width: 100%; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+  .col-card { border-radius: 10px; padding: 18px 20px; }
+  .col-purple { background: #faf5ff; border: 2px solid #c4b5fd; }
+  .col-blue   { background: #eff6ff; border: 2px solid #93c5fd; }
+  .col-green  { background: #f0fdf4; border: 2px solid #86efac; }
+  .col-orange { background: #fffbeb; border: 2px solid #fcd34d; }
+  .col-grey   { background: #f9fafb; border: 2px solid #e5e7eb; }
+  .col-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 12px; }
+  .col-purple .col-title { color: #7c3aed; }
+  .col-blue   .col-title { color: #1d4ed8; }
+  .col-green  .col-title { color: #15803d; }
+  .col-orange .col-title { color: #b45309; }
+  .col-grey   .col-title { color: #374151; }
+  .col-item { font-size: 0.82rem; color: #374151; line-height: 1.55; margin-bottom: 6px; padding-left: 14px; position: relative; }
+  .col-item::before { content: '•'; position: absolute; left: 0; color: #9ca3af; }
+  .col-item.rm::before { content: '−'; color: #dc2626; font-weight: 700; }
+  .col-item.add::before { content: '+'; color: #16a34a; font-weight: 700; }
+
+  .callout { border-radius: 8px; padding: 10px 16px; font-size: 0.8rem; }
+  .callout-amber { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .callout-blue  { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout-green { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+  .callout-grey  { background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #1d4ed8; color: #1d4ed8; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #1d4ed8; }
+  .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 09</div>
+    <div class="tag">Hello World Agent SDK · Microsoft Agent Framework · via APIM</div>
+    <h1><span class="blue">Hello World Agent SDK</span><br/>on <span class="purple">Microsoft Agent Framework</span><br/>via <span class="orange">API Management</span></h1>
+    <p class="subtitle">Sample 07 (MAF direct) and sample 06 (ME.AI via APIM) combined — the same <code>AIAgent</code> abstraction, but every model call routed through Azure API Management.</p>
+    <div style="margin-top:36px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-grey">Sample 06 · ME.AI + APIM</span>
+      <span class="pill pill-grey">Sample 07 · MAF direct</span>
+      <span class="pill pill-blue">Sample 09 · MAF + APIM</span>
+      <span class="pill pill-orange">~155 lines, 3 tools, 1 agent</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: Overview -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Overview</div>
+      <h2>What sample 09 demonstrates</h2>
+      <div class="col-card col-blue" style="margin-bottom:18px;">
+        <div class="col-title">Goal</div>
+        <div class="col-item">Combine the <strong>Microsoft Agent Framework</strong> abstraction from sample 07 with the <strong>APIM gateway routing</strong> introduced in sample 06</div>
+        <div class="col-item">The app holds an APIM subscription key — the real Azure OpenAI <code>api-key</code> never leaves the APIM policy</div>
+        <div class="col-item">Same three tools: <code>GetCurrentDateTime</code>, <code>GetWeather</code>, <code>Calculate</code></div>
+        <div class="col-item">Show that switching to MAF does <em>not</em> prevent or complicate APIM routing</div>
+      </div>
+      <div class="cols-3">
+        <div class="col-card col-grey">
+          <div class="col-title">Client type</div>
+          <div class="col-item"><code>OpenAIClient</code> (not <code>AzureOpenAIClient</code>) — required so the URL path matches the APIM operation</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Auth pattern</div>
+          <div class="col-item">APIM subscription key as <code>Ocp-Apim-Subscription-Key</code> header; SDK credential is a placeholder</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Agent pattern</div>
+          <div class="col-item"><code>AIAgent</code> via <code>.AsAIAgent(instructions, name, tools)</code> — identical to sample 07</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Family tree -->
+  <div class="slide">
+    <div class="content" style="max-width:1020px;">
+      <div class="tag">Sample Family</div>
+      <h2>Where sample 09 sits in the series</h2>
+      <div class="cols-4">
+        <div class="col-card col-grey">
+          <div class="col-title">05 · helloworld.agent</div>
+          <div class="col-item">Microsoft.Extensions.AI</div>
+          <div class="col-item"><code>IChatClient</code> + <code>UseFunctionInvocation()</code></div>
+          <div class="col-item">Direct to Azure OpenAI</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">06 · via.api.management</div>
+          <div class="col-item">Microsoft.Extensions.AI</div>
+          <div class="col-item"><code>IChatClient</code> + <code>UseFunctionInvocation()</code></div>
+          <div class="col-item">Via <strong>APIM</strong></div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">07 · agentsdk</div>
+          <div class="col-item">Microsoft Agent Framework</div>
+          <div class="col-item"><code>AIAgent</code> + <code>.AsAIAgent()</code></div>
+          <div class="col-item">Direct to Azure OpenAI</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">09 · agentsdk via APIM</div>
+          <div class="col-item">Microsoft Agent Framework</div>
+          <div class="col-item"><code>AIAgent</code> + <code>.AsAIAgent()</code></div>
+          <div class="col-item">Via <strong>APIM</strong></div>
+        </div>
+      </div>
+      <div class="callout callout-blue" style="margin-top:20px;">
+        Sample 09 sits in the bottom-right of a 2×2 matrix: <strong>MAF framework × APIM routing</strong>. Samples 05–07 cover the other three quadrants.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Diff vs Sample 07 -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Diff · vs Sample 07</div>
+      <h2>What changed since sample 07 (MAF direct)</h2>
+      <div class="two-col">
+        <div class="col-card col-grey">
+          <div class="col-title">Removed</div>
+          <div class="col-item rm"><code>AzureOpenAIClient</code> with <code>AzureKeyCredential</code></div>
+          <div class="col-item rm">Azure OpenAI <code>api-key</code> in <code>appsettings.json</code> — now lives in APIM</div>
+          <div class="col-item rm"><code>using Azure;</code> and <code>using Azure.AI.OpenAI;</code> imports</div>
+        </div>
+        <div class="col-card col-orange">
+          <div class="col-title">Added</div>
+          <div class="col-item add"><code>HttpClient</code> with <code>Ocp-Apim-Subscription-Key</code> header</div>
+          <div class="col-item add"><code>OpenAIClientOptions { Endpoint, Transport }</code></div>
+          <div class="col-item add"><code>OpenAIClient(new ApiKeyCredential("placeholder"), clientOptions)</code></div>
+          <div class="col-item add">Endpoint in config now points to <strong>APIM gateway URL</strong> instead of Azure OpenAI resource URL</div>
+          <div class="col-item add"><code>using OpenAI;</code> and <code>using System.ClientModel.Primitives;</code></div>
+        </div>
+      </div>
+      <div class="callout callout-amber" style="margin-top:16px;">
+        <strong>Nothing else changes.</strong> The <code>AIAgent</code>, all three tools, the telemetry pipeline, and the <code>agent.RunAsync()</code> invocation are word-for-word identical to sample 07.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Diff vs Sample 06 -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Diff · vs Sample 06</div>
+      <h2>What changed since sample 06 (ME.AI via APIM)</h2>
+      <div class="two-col">
+        <div class="col-card col-grey">
+          <div class="col-title">Removed (relative to 06)</div>
+          <div class="col-item rm"><code>UseFunctionInvocation()</code> middleware — MAF owns the loop</div>
+          <div class="col-item rm">Manual <code>List&lt;ChatMessage&gt;</code> with <code>ChatRole.System</code> message</div>
+          <div class="col-item rm"><code>ChatOptions { Tools, ToolMode }</code> passed per call</div>
+          <div class="col-item rm"><code>IChatClient</code> as the final type; <code>GetResponseAsync()</code> as the entry point</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">Added (relative to 06)</div>
+          <div class="col-item add"><code>Microsoft.Agents.AI</code> + <code>Microsoft.Agents.AI.OpenAI</code> NuGet packages</div>
+          <div class="col-item add"><code>.AsAIAgent(instructions, name, tools)</code> — one agent object built once</div>
+          <div class="col-item add">System prompt moved to the <code>instructions:</code> parameter</div>
+          <div class="col-item add">Tools registered once at construction, not per call</div>
+          <div class="col-item add"><code>agent.RunAsync(userPrompt)</code> returning <code>AgentResponse</code></div>
+        </div>
+      </div>
+      <div class="callout callout-grey" style="margin-top:16px;">
+        The APIM client setup (<code>HttpClient</code> + <code>Ocp-Apim-Subscription-Key</code> + <code>OpenAIClientOptions</code>) is <strong>identical</strong> to sample 06 — the only thing that changes is what gets built on top of that <code>ChatClient</code>.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: APIM routing diagram -->
+  <div class="slide">
+    <div class="content" style="max-width:860px;">
+      <div class="tag">Architecture</div>
+      <h2>How APIM routing works with MAF</h2>
+      <pre><span class="cmt">// App builds an OpenAIClient pointing at the APIM gateway</span>
+<span class="type">HttpClient</span> httpClient = <span class="kw">new</span> <span class="type">HttpClient</span>();
+httpClient.DefaultRequestHeaders.Add(
+    <span class="str">"Ocp-Apim-Subscription-Key"</span>, apimSubscriptionKey);
+
+<span class="type">OpenAIClientOptions</span> opts = <span class="kw">new</span>()
+{
+    Endpoint  = <span class="kw">new</span> <span class="type">Uri</span>(apimGatewayUrl),
+    Transport = <span class="kw">new</span> <span class="type">HttpClientPipelineTransport</span>(httpClient)
+};
+
+<span class="cmt">// SDK credential is a placeholder — real auth lives in APIM</span>
+<span class="type">AIAgent</span> agent = <span class="kw">new</span> <span class="type">OpenAIClient</span>(<span class="kw">new</span> <span class="type">ApiKeyCredential</span>(<span class="str">"placeholder"</span>), opts)
+    .<span class="mth">GetChatClient</span>(deploymentName)
+    .<span class="mth">AsIChatClient</span>()
+    .<span class="mth">AsBuilder</span>()
+    .<span class="mth">UseOpenTelemetry</span>(o => o.EnableSensitiveData = <span class="kw">true</span>)
+    .<span class="mth">Build</span>()
+    .<span class="hi">AsAIAgent</span>(instructions: systemPrompt, name: <span class="str">"..."</span>, tools: [...]);</pre>
+      <div class="callout callout-blue" style="margin-top:16px;">
+        <strong>Why <code>OpenAIClient</code> not <code>AzureOpenAIClient</code>?</strong> The Azure client appends <code>/openai/deployments/{name}/chat/completions</code> to the base URL. APIM exposes a simpler path like <code>/chat/completions</code>. Using <code>OpenAIClient</code> means the SDK sends exactly the path that APIM's operation is mapped to.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Code comparison — 07 vs 09 -->
+  <div class="slide">
+    <div class="content" style="max-width:980px;">
+      <div class="tag">Code Comparison</div>
+      <h2>Client construction — sample 07 vs sample 09</h2>
+      <div class="two-col" style="gap:16px;">
+        <div>
+          <div style="font-size:0.8rem; font-weight:700; color:#374151; margin-bottom:8px;">Sample 07 · MAF direct (AzureOpenAIClient)</div>
+          <pre><span class="cmt">// Direct to Azure OpenAI</span>
+<span class="type">AIAgent</span> agent =
+  <span class="kw">new</span> <span class="type">AzureOpenAIClient</span>(
+      <span class="kw">new</span> <span class="type">Uri</span>(endpoint),
+      <span class="kw">new</span> <span class="type">AzureKeyCredential</span>(apiKey))
+  .<span class="mth">GetChatClient</span>(deployment)
+  .<span class="mth">AsIChatClient</span>()
+  .<span class="mth">AsBuilder</span>()
+  .<span class="mth">UseOpenTelemetry</span>(o => ...)
+  .<span class="mth">Build</span>()
+  .<span class="mth">AsAIAgent</span>(
+    instructions: systemPrompt,
+    name: <span class="str">"helloworld-agent-agentsdk"</span>,
+    tools: [t1, t2, t3]);
+
+<span class="type">AgentResponse</span> r =
+  <span class="kw">await</span> agent.<span class="mth">RunAsync</span>(userPrompt);</pre>
+        </div>
+        <div>
+          <div style="font-size:0.8rem; font-weight:700; color:#b45309; margin-bottom:8px;">Sample 09 · MAF via APIM (OpenAIClient)</div>
+          <pre><span class="cmt">// Via APIM gateway</span>
+<span class="kw">var</span> http = <span class="kw">new</span> <span class="type">HttpClient</span>();
+http.DefaultRequestHeaders.Add(
+  <span class="str">"Ocp-Apim-Subscription-Key"</span>, apiKey);
+<span class="kw">var</span> opts = <span class="kw">new</span> <span class="type">OpenAIClientOptions</span>
+{ Endpoint = <span class="kw">new</span> <span class="type">Uri</span>(endpoint),
+  Transport = <span class="kw">new</span> <span class="type">HttpClientPipelineTransport</span>(http) };
+
+<span class="type">AIAgent</span> agent =
+  <span class="kw">new</span> <span class="type">OpenAIClient</span>(
+      <span class="kw">new</span> <span class="type">ApiKeyCredential</span>(<span class="str">"placeholder"</span>), opts)
+  .<span class="mth">GetChatClient</span>(deployment)
+  .<span class="mth">AsIChatClient</span>()
+  .<span class="mth">AsBuilder</span>()
+  .<span class="mth">UseOpenTelemetry</span>(o => ...)
+  .<span class="mth">Build</span>()
+  .<span class="hi">AsAIAgent</span>(
+    instructions: systemPrompt,
+    name: <span class="str">"helloworld-agent-agentsdk-via-apim"</span>,
+    tools: [t1, t2, t3]);
+
+<span class="type">AgentResponse</span> r =
+  <span class="kw">await</span> agent.<span class="mth">RunAsync</span>(userPrompt);</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Full comparison table -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Comparison</div>
+      <h2>All four samples at a glance</h2>
+      <table>
+        <thead>
+          <tr>
+            <th class="grey">Aspect</th>
+            <th class="grey">05 · ME.AI</th>
+            <th class="grey">06 · ME.AI + APIM</th>
+            <th class="grey">07 · MAF</th>
+            <th class="orange">09 · MAF + APIM</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Primary type</td><td><code>IChatClient</code></td><td><code>IChatClient</code></td><td><code>AIAgent</code></td><td><code>AIAgent</code></td></tr>
+          <tr><td>Client</td><td><code>AzureOpenAIClient</code></td><td><code>OpenAIClient</code> + APIM headers</td><td><code>AzureOpenAIClient</code></td><td><code>OpenAIClient</code> + APIM headers</td></tr>
+          <tr><td>Routing</td><td>Direct</td><td>Via APIM</td><td>Direct</td><td>Via APIM</td></tr>
+          <tr><td>App holds real api-key</td><td>Yes</td><td>No</td><td>Yes</td><td>No</td></tr>
+          <tr><td>Tool-call loop</td><td><code>UseFunctionInvocation()</code></td><td><code>UseFunctionInvocation()</code></td><td>MAF internal</td><td>MAF internal</td></tr>
+          <tr><td>System prompt</td><td><code>ChatMessage(System, …)</code></td><td><code>ChatMessage(System, …)</code></td><td><code>instructions:</code></td><td><code>instructions:</code></td></tr>
+          <tr><td>Tool registration</td><td>Per call in <code>ChatOptions</code></td><td>Per call in <code>ChatOptions</code></td><td>Once at construction</td><td>Once at construction</td></tr>
+          <tr><td>Invocation</td><td><code>GetResponseAsync()</code></td><td><code>GetResponseAsync()</code></td><td><code>RunAsync()</code></td><td><code>RunAsync()</code></td></tr>
+          <tr><td>Return type</td><td><code>ChatResponse</code></td><td><code>ChatResponse</code></td><td><code>AgentResponse</code></td><td><code>AgentResponse</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: Security benefits of APIM -->
+  <div class="slide">
+    <div class="content" style="max-width:860px;">
+      <div class="tag">Security</div>
+      <h2>Security benefits of routing via APIM</h2>
+      <div class="cols-3" style="margin-bottom:18px;">
+        <div class="col-card col-green">
+          <div class="col-title">Key isolation</div>
+          <div class="col-item">The real Azure OpenAI <code>api-key</code> is stored in the APIM policy, not in any app config file</div>
+          <div class="col-item">Rotating the OpenAI key requires updating one APIM policy — no app redeployment</div>
+        </div>
+        <div class="col-card col-green">
+          <div class="col-title">Governance &amp; quotas</div>
+          <div class="col-item">Rate limiting, token quotas, and usage tracking applied centrally at APIM</div>
+          <div class="col-item">Multiple apps share one APIM subscription layer with different policies</div>
+        </div>
+        <div class="col-card col-green">
+          <div class="col-title">Auditability</div>
+          <div class="col-item">APIM logs every call with subscription ID — who called what and when</div>
+          <div class="col-item">Works alongside the app-level App Insights telemetry for end-to-end tracing</div>
+        </div>
+      </div>
+      <div class="callout callout-green">
+        <strong>Same security posture as sample 06</strong> — sample 09 inherits all of these benefits without any additional configuration. The MAF abstraction layer is transparent to APIM.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: Takeaways -->
+  <div class="slide">
+    <div class="content" style="max-width:860px;">
+      <div class="tag">Takeaways</div>
+      <h2>Why this sample exists</h2>
+      <div class="two-col" style="margin-bottom:18px;">
+        <div class="col-card col-blue">
+          <div class="col-title">Use sample 09 when…</div>
+          <div class="col-item">You want the clean <code>AIAgent</code> abstraction of MAF <em>and</em> the governance of APIM</div>
+          <div class="col-item">Your organisation requires that apps never hold Azure OpenAI keys</div>
+          <div class="col-item">You're adopting Microsoft Agent Framework on an existing APIM-gated Azure OpenAI setup</div>
+          <div class="col-item">You want a path toward multi-agent orchestration without giving up your APIM policy layer</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">When other samples may be better</div>
+          <div class="col-item">No APIM available or needed → use sample 07 (MAF direct)</div>
+          <div class="col-item">Need full ME.AI composability (custom middleware) → use sample 06 (ME.AI + APIM)</div>
+          <div class="col-item">Simplest possible baseline → use sample 05 (ME.AI direct)</div>
+        </div>
+      </div>
+      <div class="callout callout-grey">
+        Sample 09 is the <strong>production-ready combination</strong>: MAF's ergonomic agent API plus APIM's security and governance layer.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 10</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dotsEl = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  let cur = 0;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => show(i);
+    dotsEl.appendChild(d);
+  });
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    dotsEl.children[cur].classList.remove('active');
+    cur = n;
+    slides[cur].classList.add('active');
+    dotsEl.children[cur].classList.add('active');
+    counter.textContent = (cur + 1) + ' / ' + slides.length;
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === slides.length - 1;
+  }
+
+  function go(d) { if (cur + d >= 0 && cur + d < slides.length) show(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+</script>
+</body>
+</html>

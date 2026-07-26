@@ -1,27 +1,36 @@
 // =============================================================================
-// Sample 07 – Hello World Agent SDK (Microsoft Agent Framework)
+// Sample 09 – Hello World Agent SDK via API Management (Microsoft Agent Framework)
 // =============================================================================
-// This sample replicates sample 05 (Microsoft.Extensions.AI) using the
-// Microsoft Agent Framework (MAF) – a higher-level abstraction built on top
-// of Microsoft.Extensions.AI.
+// This sample replicates sample 07 (Microsoft Agent Framework) but routes all
+// model calls through Azure API Management (APIM) instead of directly to
+// Azure OpenAI – matching the same APIM routing pattern introduced in sample 06.
 //
-// Key differences vs sample 05:
+// Key differences vs sample 07 (MAF direct):
+//   • Uses OpenAIClient (not AzureOpenAIClient) so the SDK calls {endpoint}/chat/completions
+//     directly – AzureOpenAIClient would append /openai/deployments/{name}/chat/completions
+//     which won't match the APIM operation path.
+//   • ApiKey is the APIM subscription key, sent as Ocp-Apim-Subscription-Key header.
+//   • The real Azure OpenAI api-key is injected by the APIM inbound policy – the app
+//     never holds it.
+//   • Everything else (AIAgent, AsAIAgent, tools, telemetry) is identical to sample 07.
+//
+// Key differences vs sample 06 (ME.AI via APIM):
 //   • Uses AIAgent / .AsAIAgent() instead of IChatClient builder pipeline
 //   • System prompt is passed as `instructions:` to AsAIAgent() – not as a ChatMessage
 //   • Tools are registered at agent-creation time (not in ChatOptions per call)
 //   • UseFunctionInvocation() middleware is NOT needed – MAF manages the loop internally
 //   • .RunAsync(userPrompt) replaces .GetResponseAsync(messages, options)
-//   • Token counts are NOT returned by RunAsync() – use streaming or custom metrics
 // =============================================================================
 
+using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.ComponentModel;
 using System.Diagnostics;
-using Azure;
-using Azure.AI.OpenAI;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
+using OpenAI;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -31,7 +40,9 @@ using OpenTelemetry.Trace;
 // 1. Configuration
 // ---------------------------------------------------------------------------
 // appsettings.json is gitignored (contains real keys).
-// Environment variables override it for CI/CD and container deployments.
+// Endpoint  = your APIM gateway URL (e.g. https://<apim-name>.azure-api.net/<api-path>)
+// ApiKey    = your APIM subscription key  (Ocp-Apim-Subscription-Key)
+// The real Azure OpenAI api-key stays in the APIM policy – this app never sees it.
 var config = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
     .AddJsonFile("appsettings.json", optional: true)
@@ -49,17 +60,7 @@ var appInsightsConnectionString = config["ApplicationInsights:ConnectionString"]
 // ---------------------------------------------------------------------------
 // 2. OpenTelemetry pipeline
 // ---------------------------------------------------------------------------
-// MAF is built on top of Microsoft.Extensions.AI and emits traces under the
-// same activity source names.  The gen_ai semantic-convention spans come from
-// the ME.AI layer regardless of whether you use IChatClient directly (sample 05)
-// or wrap it with AIAgent (this sample).
-//
-// NOTE: unlike sample 05, we do NOT call .UseOpenTelemetry() on the inner
-// IChatClient here.  This is intentional – it lets you compare "out-of-the-box"
-// MAF telemetry vs the explicitly wired ME.AI pipeline in sample 05.
-// ---------------------------------------------------------------------------
-
-var sourceName = "helloworld-agentsdk";
+var sourceName = "helloworld-agentsdk-via-apim";
 var appSource = new ActivitySource(sourceName);
 
 var resource = ResourceBuilder.CreateDefault()
@@ -89,7 +90,23 @@ using var meterProvider = Sdk.CreateMeterProviderBuilder()
     .Build();
 
 // ---------------------------------------------------------------------------
-// 3. Agent tools  (identical to sample 05 – same AIFunctionFactory pattern)
+// 3. APIM-aware HTTP client
+// ---------------------------------------------------------------------------
+// APIM requires the subscription key as a request header.
+// We attach it to every outbound request via HttpClient.DefaultRequestHeaders.
+// The SDK credential is set to a placeholder because the real auth is handled
+// by the APIM inbound policy (set-header / set-backend-service).
+var httpClient = new HttpClient();
+httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", apiKey);
+
+var clientOptions = new OpenAIClientOptions
+{
+    Endpoint = new Uri(endpoint),
+    Transport = new HttpClientPipelineTransport(httpClient)
+};
+
+// ---------------------------------------------------------------------------
+// 4. Agent tools  (identical to sample 07)
 // ---------------------------------------------------------------------------
 
 AIFunction getDateTimeTool = AIFunctionFactory.Create(
@@ -127,13 +144,12 @@ AIFunction calculateTool = AIFunctionFactory.Create(
     "Performs a basic arithmetic operation (+, -, *, /) on two numbers and returns the result.");
 
 // ---------------------------------------------------------------------------
-// 4. Build the MAF AIAgent
+// 5. Build the MAF AIAgent (via APIM)
 // ---------------------------------------------------------------------------
-// Key difference vs sample 05:
-//   • Tools are registered HERE at construction time via tools: []
-//   • The system prompt becomes the agent's `instructions`
-//   • No ChatOptions, no UseFunctionInvocation() – MAF owns the tool-call loop
-// ---------------------------------------------------------------------------
+// Key difference vs sample 07:
+//   • OpenAIClient (not AzureOpenAIClient) so the path is {endpoint}/chat/completions
+//   • Credential is a placeholder "placeholder" – real auth is the APIM subscription key header
+// Everything else – AsAIAgent(), instructions, tools – is identical to sample 07.
 
 const string systemPrompt =
     "You are a helpful assistant with access to tools for getting the current date/time, " +
@@ -144,28 +160,26 @@ const string userPrompt =
     "What is the weather like in London and Tokyo right now? " +
     "If it is currently past noon UTC, also tell me the temperature difference between the two cities in Fahrenheit.";
 
-// AsAIAgent() is an extension method from Microsoft.Agents.AI on IChatClient.
-// We must first convert the OpenAI ChatClient to IChatClient via .AsIChatClient()
-// (from Microsoft.Extensions.AI.OpenAI), then call .AsAIAgent().
-AIAgent agent = new AzureOpenAIClient(
-        new Uri(endpoint),
-        new AzureKeyCredential(apiKey))
+AIAgent agent = new OpenAIClient(
+        new ApiKeyCredential("placeholder"), // subscription key already in HttpClient headers
+        clientOptions)
     .GetChatClient(deploymentName)
-    .AsIChatClient()           // convert OpenAI ChatClient → IChatClient (ME.AI) 
+    .AsIChatClient()
     .AsBuilder()
     .UseOpenTelemetry(configure: o => o.EnableSensitiveData = true)
-    .Build()   
+    .Build()
     .AsAIAgent(
         instructions: systemPrompt,
-        name: "helloworld-agent-agentsdk",
+        name: "helloworld-agent-agentsdk-via-apim",
         tools: [getDateTimeTool, getWeatherTool, calculateTool]);
 
 // ---------------------------------------------------------------------------
-// 5. Run the agent
+// 6. Run the agent
 // ---------------------------------------------------------------------------
 
-Console.WriteLine("Azure OpenAI Agent – Hello World Agent SDK Sample (Microsoft Agent Framework)");
+Console.WriteLine("Azure OpenAI Agent – Hello World Agent SDK via APIM (Microsoft Agent Framework)");
 Console.WriteLine($"Deployment: {deploymentName}");
+Console.WriteLine($"Endpoint  : {endpoint}");
 Console.WriteLine($"Tools     : GetCurrentDateTime, GetWeather, Calculate");
 Console.WriteLine();
 Console.WriteLine($"User: {userPrompt}");
@@ -174,59 +188,45 @@ Console.WriteLine();
 long inputTokens  = 0;
 long outputTokens = 0;
 
-// Scoped using block so the parent span is CLOSED before ForceFlush is called.
 using (var operation = appSource.StartActivity("run-ai-agent", ActivityKind.Server))
 {
-    // Custom dependency span – same pattern as sample 05.
-    // This makes the agent visible in App Insights Agent Preview by carrying
-    // the gen_ai.agent.name and gen_ai.operation.name tags directly on this span.
     AgentResponse agentResponse;
-    using (var agentSpan = appSource.StartActivity("Invoke Hello World Agent", 
+    using (var agentSpan = appSource.StartActivity("Invoke Hello World Agent",
         ActivityKind.Client))
     {
         agentSpan?.SetTag("gen_ai.operation.name", "invoke_agent");
-        agentSpan?.SetTag("gen_ai.agent.name", "helloworld-agent-agentsdk");
+        agentSpan?.SetTag("gen_ai.agent.name", "helloworld-agent-agentsdk-via-apim");
         agentSpan?.SetTag("gen_ai.system", "openai");
         agentSpan?.SetTag("gen_ai.request.model", deploymentName);
 
-        // MAF handles the entire tool-call loop internally.
-        // RunAsync() blocks until the agent reaches a final text response.
-        // Unlike GetResponseAsync() (sample 05), it returns AgentResponse –
-        // token usage is not surfaced here.  Use RunStreamingAsync() for
-        // streaming updates, or add custom OTel metrics if you need usage counts.
+        // MAF handles the entire tool-call loop internally via APIM.
         agentResponse = await agent.RunAsync(userPrompt);
-
-        //agentSpan?.SetStatus(ActivityStatusCode.Ok);
 
         if (agentResponse.Usage is not null)
         {
             inputTokens  = agentResponse.Usage.InputTokenCount  ?? 0;
             outputTokens = agentResponse.Usage.OutputTokenCount ?? 0;
             Console.WriteLine($"Token usage — Input: {inputTokens}, Output: {outputTokens}, Total: {inputTokens + outputTokens}");
-            
-            //Set token use on the custom agent dependency
+
             agentSpan?.SetTag("ai.input_tokens",  inputTokens);
             agentSpan?.SetTag("ai.output_tokens", outputTokens);
         }
     }
 
     Console.WriteLine("Agent:");
-    //Console.WriteLine(agentResponse.Text);
+    Console.WriteLine(agentResponse.Text);
     Console.WriteLine();
 
-    //Set tokens on the parent request
     operation?.SetTag("ai.input_tokens",  inputTokens);
     operation?.SetTag("ai.output_tokens", outputTokens);
-
-    //operation?.SetStatus(ActivityStatusCode.Ok);
-} // ← parent span ends here, queued for export
+}
 
 // ---------------------------------------------------------------------------
-// 6. Flush telemetry
+// 7. Flush telemetry
 // ---------------------------------------------------------------------------
 Console.WriteLine("Flushing telemetry...");
 tracerProvider.ForceFlush();
 meterProvider.ForceFlush();
 
-Thread.Sleep(5000); // give the exporter a moment to send before process exits
+Thread.Sleep(5000);
 Console.WriteLine("Done. Traces sent to Application Insights.");

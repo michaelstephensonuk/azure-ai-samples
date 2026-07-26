@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>22 · VS Code Claude Code Telemetry — OpenTelemetry</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #d97706; margin-bottom: 14px; }
+  h1 { font-size: 3rem; font-weight: 700; line-height: 1.15; color: #111827; }
+  h1 span { color: #d97706; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 28px; }
+  .subtitle { font-size: 1.15rem; color: #6b7280; margin-top: 16px; max-width: 680px; text-align: center; line-height: 1.6; }
+  p { font-size: 1.05rem; color: #6b7280; line-height: 1.7; max-width: 780px; }
+  .content { width: 100%; max-width: 860px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th { text-align: left; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: #d97706; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 10px 12px; font-size: 0.95rem; border-bottom: 1px solid #f3f4f6; color: #111827; vertical-align: top; }
+  td:first-child { color: #92400e; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.85rem; white-space: nowrap; }
+  td:last-child { color: #6b7280; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 20px 24px; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.83rem; line-height: 1.65; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw { color: #cf222e; } .type { color: #0550ae; } .str { color: #0a3069; } .cmt { color: #6e7781; font-style: italic; } .mth { color: #8250df; } .var { color: #24292f; }
+
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+  .box { background: #f9fafb; border: 1px solid #d0d7de; border-radius: 8px; padding: 12px 20px; font-size: 0.88rem; text-align: center; min-width: 120px; color: #111827; }
+  .box.blue { border-color: #0969da; background: #dbeafe; color: #1e40af; }
+  .box.green { border-color: #2da44e; background: #dcfce7; color: #166534; }
+  .box.purple { border-color: #8250df; background: #f3e8ff; color: #6f42c1; }
+  .box.orange { border-color: #d97706; background: #fef3c7; color: #92400e; }
+  .box small { display: block; color: #6b7280; font-size: 0.75rem; margin-top: 3px; }
+  .arrow { color: #d0d7de; font-size: 1.5rem; margin: 0 6px; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; margin: 3px; }
+  .pill-blue { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-green { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .pill-orange { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .pill-purple { background: #f3e8ff; color: #6f42c1; border: 1px solid #d8b4fe; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #d97706; color: #d97706; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #d97706; }
+
+  .badge { display: inline-block; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+
+  .signal-row { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .signal { flex: 1; min-width: 180px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; }
+  .signal .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #d97706; margin-bottom: 6px; font-weight: 600; }
+  .signal .name { font-family: 'Cascadia Code', monospace; font-size: 0.82rem; color: #92400e; margin-bottom: 4px; }
+  .signal .desc { font-size: 0.82rem; color: #6b7280; }
+</style>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false, theme: 'default' });
+  window.__mermaidInit = async () => {
+    await mermaid.run({ querySelector: '.slide.active .mermaid' });
+  };
+  window.__mermaidInit();
+</script>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 22 · Claude Code Telemetry</div>
+    <div class="tag">OpenTelemetry · Claude Code · Application Insights</div>
+    <h1><span>Claude Code</span> Telemetry</h1>
+    <p class="subtitle">Stream every Claude Code interaction — prompts, tool calls, token counts, cost, and latency — to your own OpenTelemetry Collector and on into Application Insights.</p>
+    <div style="margin-top:40px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-orange">CLAUDE_CODE_ENABLE_TELEMETRY</span>
+      <span class="pill pill-orange">OTEL_LOG_USER_PROMPTS</span>
+      <span class="pill pill-orange">OTEL_LOG_TOOL_DETAILS</span>
+      <span class="pill pill-purple">OTel Collector (sample 20)</span>
+      <span class="pill pill-blue">App Insights</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: Why capture Claude Code telemetry -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Overview</div>
+      <h2>Why capture Claude Code telemetry?</h2>
+      <p style="margin-bottom:24px;">Claude Code emits rich OpenTelemetry signals when enabled — giving you visibility into every AI interaction, tool invocation, and spend that would otherwise be invisible.</p>
+      <table>
+        <thead><tr><th>What you get</th><th>Why it matters</th></tr></thead>
+        <tbody>
+          <tr><td>Token counts per request</td><td>Track consumption and forecast cost per developer or team</td></tr>
+          <tr><td>Cost in USD per request</td><td>Claude Code reports cost_usd directly — no estimation needed</td></tr>
+          <tr><td>Tool call details</td><td>See which tools (bash, edit, search) Claude invoked and how often</td></tr>
+          <tr><td>User prompts</td><td>Capture the actual questions developers ask for quality review</td></tr>
+          <tr><td>Cache token usage</td><td>Understand cache hit rates and savings from prompt caching</td></tr>
+          <tr><td>Model version</td><td>Track which Claude model version handled each request</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Architecture -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Architecture</div>
+      <h2>How the telemetry flows</h2>
+      <div class="flow" style="flex-direction:column; gap:14px; align-items:center; margin-bottom:28px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="box orange" style="min-width:200px;">Claude Code<small>VS Code extension</small></div>
+          <div class="arrow">→</div>
+          <div class="box purple" style="min-width:200px;">OTel Collector<small>localhost:4318 (HTTP) — sample 20</small></div>
+          <div class="arrow">→</div>
+          <div class="box blue" style="min-width:200px;">Application Insights<small>Azure Monitor</small></div>
+        </div>
+        <div style="text-align:center; max-width:680px; margin-top:8px;">
+          <p style="font-size:0.88rem;">Claude Code reads its OTel configuration from <code style="color:#92400e; font-family:monospace;">.claude/settings.json</code> (workspace) or from environment variables. It exports logs and metrics over OTLP HTTP to the collector, which forwards them to Azure Monitor.</p>
+        </div>
+      </div>
+      <div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:14px 18px;">
+        <p style="font-size:0.88rem; color:#92400e;"><strong>Pre-requisite:</strong> The OpenTelemetry Collector from sample 20 must be running and listening on <code style="color:#92400e; font-family:monospace;">http://localhost:4318</code> before you start using Claude Code.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Option 1 — settings.json -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Configuration — Option 1</div>
+      <h2>Workspace settings: .claude/settings.json</h2>
+      <p style="margin-bottom:20px;">Create or edit <code style="color:#92400e; font-family:monospace;">.claude/settings.json</code> at the root of your workspace. Settings here apply to everyone who opens this project with Claude Code.</p>
+      <pre>{
+  <span class="str">"env"</span>: {
+    <span class="str">"CLAUDE_CODE_ENABLE_TELEMETRY"</span>: <span class="str">"1"</span>,
+    <span class="str">"OTEL_METRICS_EXPORTER"</span>:        <span class="str">"otlp"</span>,
+    <span class="str">"OTEL_LOGS_EXPORTER"</span>:           <span class="str">"otlp"</span>,
+    <span class="str">"OTEL_EXPORTER_OTLP_PROTOCOL"</span>:  <span class="str">"http/protobuf"</span>,
+    <span class="str">"OTEL_EXPORTER_OTLP_ENDPOINT"</span>:  <span class="str">"http://localhost:4318"</span>,
+    <span class="str">"OTEL_LOG_USER_PROMPTS"</span>:        <span class="str">"1"</span>,
+    <span class="str">"OTEL_LOG_TOOL_DETAILS"</span>:        <span class="str">"1"</span>,
+    <span class="str">"OTEL_METRICS_INCLUDE_VERSION"</span>:  <span class="str">"true"</span>
+  }
+}</pre>
+      <div style="margin-top:16px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:14px 18px;">
+        <p style="font-size:0.88rem; color:#166534;"><strong>Tip:</strong> Commit this file to source control so the whole team shares the same telemetry configuration automatically.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Option 2 — Environment variables -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Configuration — Option 2</div>
+      <h2>Environment variables via PowerShell</h2>
+      <p style="margin-bottom:20px;">Set variables at User scope — they persist across sessions and apply to all workspaces. Restart your terminal or Claude Code after setting them.</p>
+      <pre><span class="cmt"># Set Claude Code OTel env vars for current user</span>
+<span class="var">$vars</span> = @{
+    <span class="str">"CLAUDE_CODE_ENABLE_TELEMETRY"</span> = <span class="str">"1"</span>
+    <span class="str">"OTEL_METRICS_EXPORTER"</span>        = <span class="str">"otlp"</span>
+    <span class="str">"OTEL_LOGS_EXPORTER"</span>           = <span class="str">"otlp"</span>
+    <span class="str">"OTEL_EXPORTER_OTLP_PROTOCOL"</span>  = <span class="str">"http/protobuf"</span>
+    <span class="str">"OTEL_EXPORTER_OTLP_ENDPOINT"</span>  = <span class="str">"http://localhost:4318"</span>
+    <span class="str">"OTEL_LOG_USER_PROMPTS"</span>        = <span class="str">"1"</span>
+    <span class="str">"OTEL_LOG_TOOL_DETAILS"</span>        = <span class="str">"1"</span>
+    <span class="str">"OTEL_METRICS_INCLUDE_VERSION"</span>  = <span class="str">"true"</span>
+}
+
+<span class="kw">foreach</span> (<span class="var">$key</span> <span class="kw">in</span> <span class="var">$vars</span>.Keys) {
+    [<span class="type">System.Environment</span>]::<span class="mth">SetEnvironmentVariable</span>(<span class="var">$key</span>, <span class="var">$vars</span>[<span class="var">$key</span>], <span class="str">"User"</span>)
+}</pre>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: Settings reference -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Settings Reference</div>
+      <h2>What each variable does</h2>
+      <table>
+        <thead><tr><th>Variable</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>CLAUDE_CODE_ENABLE_TELEMETRY</td><td>Master switch. Set to <code style="color:#92400e; font-family:monospace;">1</code> to enable all OTel export. Remove or set to <code style="color:#92400e; font-family:monospace;">0</code> to disable.</td></tr>
+          <tr><td>OTEL_METRICS_EXPORTER</td><td><code style="color:#92400e; font-family:monospace;">otlp</code> sends metrics (token counts, cost, duration) to the collector.</td></tr>
+          <tr><td>OTEL_LOGS_EXPORTER</td><td><code style="color:#92400e; font-family:monospace;">otlp</code> sends log records (API requests, tool calls) to the collector.</td></tr>
+          <tr><td>OTEL_EXPORTER_OTLP_PROTOCOL</td><td><code style="color:#92400e; font-family:monospace;">http/protobuf</code> — use HTTP with Protobuf encoding (port 4318).</td></tr>
+          <tr><td>OTEL_EXPORTER_OTLP_ENDPOINT</td><td>URL of your OTel Collector. Default is <code style="color:#92400e; font-family:monospace;">http://localhost:4318</code>.</td></tr>
+          <tr><td>OTEL_LOG_USER_PROMPTS</td><td>When <code style="color:#92400e; font-family:monospace;">1</code>, includes the actual prompt text in log records. Useful for quality review.</td></tr>
+          <tr><td>OTEL_LOG_TOOL_DETAILS</td><td>When <code style="color:#92400e; font-family:monospace;">1</code>, logs details of every tool call (bash commands, file edits, searches).</td></tr>
+          <tr><td>OTEL_METRICS_INCLUDE_VERSION</td><td>Includes the Claude model version tag on every metric.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Sequence diagram -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Message Sequence</div>
+      <h2>Step-by-step flow</h2>
+      <div class="mermaid" style="background:#f6f8fa; border:1px solid #d0d7de; border-radius:10px; padding:20px; overflow:auto; max-height:60vh;">
+sequenceDiagram
+    participant Dev as Developer
+    participant CC as Claude Code
+    participant Claude as Anthropic API
+    participant Collector as OTel Collector&lt;br/&gt;(sample 20)
+    participant AppIns as Application Insights
+
+    Dev->>CC: Type a prompt or run a command
+    CC->>Claude: API request (model call)
+    Claude-->>CC: Response + token usage + cost_usd
+
+    CC->>CC: Record log: claude_code.api_request&lt;br/&gt;(tokens, cost, prompt, tool details)
+    CC->>Collector: OTLP/HTTP POST to localhost:4318&lt;br/&gt;logs + metrics
+    Collector->>AppIns: Export via Azure Monitor exporter
+
+    Dev->>AppIns: Query traces / customMetrics in Log Analytics
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: What you see in App Insights -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Observability Output</div>
+      <h2>What you see in Application Insights</h2>
+      <div class="signal-row">
+        <div class="signal">
+          <div class="label">Log record</div>
+          <div class="name">claude_code.api_request</div>
+          <div class="desc">One record per model call. Contains all token counts, cost_usd, model version, and prompt if enabled.</div>
+        </div>
+        <div class="signal">
+          <div class="label">Dimension</div>
+          <div class="name">cost_usd</div>
+          <div class="desc">Exact cost in USD for the request as reported by Claude. No estimation needed.</div>
+        </div>
+        <div class="signal">
+          <div class="label">Dimension</div>
+          <div class="name">input_tokens / output_tokens</div>
+          <div class="desc">Token counts for the prompt and completion. Enables per-developer usage tracking.</div>
+        </div>
+        <div class="signal">
+          <div class="label">Dimension</div>
+          <div class="name">cache_creation_tokens</div>
+          <div class="desc">Tokens written to the prompt cache. Shows where caching is active.</div>
+        </div>
+        <div class="signal">
+          <div class="label">Dimension</div>
+          <div class="name">cache_read_tokens</div>
+          <div class="desc">Tokens read from the prompt cache. Higher values = more cost savings.</div>
+        </div>
+        <div class="signal">
+          <div class="label">Dimension</div>
+          <div class="name">user.email</div>
+          <div class="desc">The authenticated developer's email — enables per-user reporting in KQL.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: KQL queries -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">Log Analytics / KQL</div>
+      <h2>Useful queries</h2>
+      <div style="display:flex; gap:16px; flex-direction:column;">
+        <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px 18px;">
+          <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#d97706; margin-bottom:8px;">All Claude Code API calls — tokens, cost, and prompt</div>
+          <pre style="margin:0; font-size:0.76rem; line-height:1.55; white-space:pre-wrap;"><span class="kw">traces</span>
+<span class="cmt">| where</span> message == <span class="str">"claude_code.api_request"</span>
+<span class="cmt">| extend</span> cost_usd_     = todecimal(customDimensions.cost_usd)
+<span class="cmt">| extend</span> inputTokens_  = tolong(customDimensions.input_tokens)
+<span class="cmt">| extend</span> outputTokens_ = tolong(customDimensions.output_tokens)
+<span class="cmt">| extend</span> userEmail_    = tostring(customDimensions[<span class="str">"user.email"</span>])
+<span class="cmt">| extend</span> model_        = tostring(customDimensions.model)
+<span class="cmt">| project</span> timestamp, userEmail_, model_, cost_usd_, inputTokens_, outputTokens_
+<span class="cmt">| order by</span> timestamp <span class="kw">desc</span></pre>
+        </div>
+        <div style="display:flex; gap:16px;">
+          <div style="flex:1; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px 18px;">
+            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#d97706; margin-bottom:8px;">Cost per developer · last 7 days</div>
+            <pre style="margin:0; font-size:0.76rem; line-height:1.55; white-space:pre-wrap;"><span class="kw">traces</span>
+<span class="cmt">| where</span> message == <span class="str">"claude_code.api_request"</span>
+<span class="cmt">| where</span> timestamp > ago(7d)
+<span class="cmt">| extend</span> cost_    = todecimal(
+    customDimensions.cost_usd)
+<span class="cmt">| extend</span> email_   = tostring(
+    customDimensions[<span class="str">"user.email"</span>])
+<span class="cmt">| summarize</span>
+    TotalCostUSD = sum(cost_),
+    Requests     = count()
+    by email_
+<span class="cmt">| order by</span> TotalCostUSD <span class="kw">desc</span></pre>
+          </div>
+          <div style="flex:1; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px 18px;">
+            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#d97706; margin-bottom:8px;">Cache savings · input vs cache read</div>
+            <pre style="margin:0; font-size:0.76rem; line-height:1.55; white-space:pre-wrap;"><span class="kw">traces</span>
+<span class="cmt">| where</span> message == <span class="str">"claude_code.api_request"</span>
+<span class="cmt">| extend</span> cacheRead_ = tolong(
+    customDimensions.cache_read_tokens)
+<span class="cmt">| extend</span> cacheNew_  = tolong(
+    customDimensions.cache_creation_tokens)
+<span class="cmt">| summarize</span>
+    TotalCacheRead    = sum(cacheRead_),
+    TotalCacheCreated = sum(cacheNew_)
+    by bin(timestamp, 1d)
+<span class="cmt">| order by</span> timestamp <span class="kw">desc</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: Summary -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Summary</div>
+      <h2>Quick-start checklist</h2>
+      <table style="margin-bottom:24px;">
+        <thead><tr><th>#</th><th>Step</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr><td style="color:#166534;">1</td><td>Start the OTel Collector (sample 20)</td><td style="color:#6b7280;">Windows service / Docker</td></tr>
+          <tr><td style="color:#166534;">2</td><td>Add env vars to <code style="color:#92400e; font-family:monospace;">.claude/settings.json</code> or set via PowerShell</td><td style="color:#6b7280;">Workspace or User scope</td></tr>
+          <tr><td style="color:#166534;">3</td><td>Use Claude Code normally — ask questions, run commands</td><td style="color:#6b7280;">VS Code</td></tr>
+          <tr><td style="color:#166534;">4</td><td>Query <code style="color:#92400e; font-family:monospace;">traces</code> in Log Analytics for API calls and cost</td><td style="color:#6b7280;">Azure Portal → App Insights → Logs</td></tr>
+        </tbody>
+      </table>
+      <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px 18px;">
+        <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; color:#d97706; margin-bottom:8px;">Further reading</div>
+        <p style="font-size:0.88rem; color:#6b7280;"><a href="https://code.claude.com/docs/en/monitoring-usage" style="color:#d97706;">code.claude.com/docs/en/monitoring-usage</a></p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 10</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let current = 0;
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsEl.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(n, totalSlides - 1));
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.add('active');
+    document.getElementById('counter').textContent = `${current + 1} / ${totalSlides}`;
+    document.getElementById('prev').disabled = current === 0;
+    document.getElementById('next').disabled = current === totalSlides - 1;
+    if (window.__mermaidInit) window.__mermaidInit();
+  }
+  function go(dir) { goTo(current + dir); }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     { e.preventDefault(); go(-1); }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sample 07 — Hello World Agent SDK (Microsoft Agent Framework)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; overflow-y: auto; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #1d4ed8; margin-bottom: 14px; }
+  h1 { font-size: 2.6rem; font-weight: 700; line-height: 1.15; color: #111827; text-align: center; }
+  h1 span.blue { color: #1d4ed8; }
+  h1 span.purple { color: #8250df; }
+  h1 span.green { color: #15803d; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 24px; }
+  .subtitle { font-size: 1.05rem; color: #6b7280; margin-top: 16px; max-width: 680px; text-align: center; line-height: 1.6; }
+  p { font-size: 0.95rem; color: #6b7280; line-height: 1.7; max-width: 820px; }
+  .content { width: 100%; max-width: 960px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; border-bottom: 2px solid #e5e7eb; }
+  th.blue   { color: #1d4ed8; }
+  th.purple { color: #8250df; }
+  th.green  { color: #15803d; }
+  th.grey   { color: #6b7280; }
+  td { padding: 8px 10px; font-size: 0.82rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: top; }
+  td:first-child { color: #374151; font-weight: 600; white-space: nowrap; }
+  td code { font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.78rem; color: #0550ae; background:#f0f4ff; padding:1px 5px; border-radius:4px; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px 20px; font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.78rem; line-height: 1.6; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw { color: #cf222e; } .type { color: #0550ae; } .str { color: #0a3069; } .cmt { color: #6e7781; font-style: italic; } .mth { color: #8250df; } .hi { color: #1d4ed8; font-weight: 700; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.77rem; font-weight: 600; margin: 3px; }
+  .pill-blue   { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-purple { background: #f3e8ff; color: #7c3aed; border: 1px solid #c4b5fd; }
+  .pill-green  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .pill-orange { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .pill-grey   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; width: 100%; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+  .col-card { border-radius: 10px; padding: 18px 20px; }
+  .col-purple { background: #faf5ff; border: 2px solid #c4b5fd; }
+  .col-blue   { background: #eff6ff; border: 2px solid #93c5fd; }
+  .col-green  { background: #f0fdf4; border: 2px solid #86efac; }
+  .col-grey   { background: #f9fafb; border: 2px solid #e5e7eb; }
+  .col-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 12px; }
+  .col-purple .col-title { color: #7c3aed; }
+  .col-blue   .col-title { color: #1d4ed8; }
+  .col-green  .col-title { color: #15803d; }
+  .col-grey   .col-title { color: #374151; }
+  .col-item { font-size: 0.82rem; color: #374151; line-height: 1.55; margin-bottom: 6px; padding-left: 14px; position: relative; }
+  .col-item::before { content: '•'; position: absolute; left: 0; color: #9ca3af; }
+  .col-item.rm::before { content: '−'; color: #dc2626; font-weight: 700; }
+  .col-item.add::before { content: '+'; color: #16a34a; font-weight: 700; }
+
+  .callout { border-radius: 8px; padding: 10px 16px; font-size: 0.8rem; }
+  .callout-amber { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .callout-blue  { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout-grey  { background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #1d4ed8; color: #1d4ed8; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #1d4ed8; }
+  .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 07</div>
+    <div class="tag">Hello World Agent · Microsoft Agent Framework</div>
+    <h1><span class="blue">Hello World Agent SDK</span><br/>on the <span class="purple">Microsoft Agent Framework</span></h1>
+    <p class="subtitle">Same tools, same model, same telemetry goals as samples 05 and 06 — rebuilt on <code>Microsoft.Agents.AI</code>'s <code>AIAgent</code> instead of a hand-wired <code>IChatClient</code> pipeline.</p>
+    <div style="margin-top:36px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-grey">Sample 05 · ME.AI direct</span>
+      <span class="pill pill-grey">Sample 06 · ME.AI via APIM</span>
+      <span class="pill pill-blue">Sample 07 · MAF direct</span>
+      <span class="pill pill-green">~150 lines, 3 tools, 1 agent</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: What this sample demonstrates -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Overview</div>
+      <h2>What sample 07 demonstrates</h2>
+      <div class="col-card col-blue" style="margin-bottom:18px;">
+        <div class="col-title">Goal</div>
+        <div class="col-item">Build the exact same "hello world" agent as sample 05 — but using the <strong>Microsoft Agent Framework</strong> (<code>Microsoft.Agents.AI</code> v1.13.0) instead of raw <code>Microsoft.Extensions.AI</code></div>
+        <div class="col-item">Wire up the same three tools: <code>GetCurrentDateTime</code>, <code>GetWeather</code>, <code>Calculate</code></div>
+        <div class="col-item">Talk directly to Azure OpenAI (no APIM hop, unlike sample 06)</div>
+        <div class="col-item">Compare how Application Insights telemetry looks when the tool-call loop is owned by MAF instead of explicit ME.AI middleware</div>
+      </div>
+      <div class="cols-3">
+        <div class="col-card col-grey">
+          <div class="col-title">Program.cs shape</div>
+          <div class="col-item">Config → OTel setup → tools → build <code>AIAgent</code> → <code>RunAsync()</code> → flush</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Key type</div>
+          <div class="col-item"><code>AIAgent</code> created via <code>.AsAIAgent(instructions, name, tools)</code></div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Entry point</div>
+          <div class="col-item"><code>agent.RunAsync(userPrompt)</code> → <code>AgentResponse</code></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Family tree -->
+  <div class="slide">
+    <div class="content" style="max-width:880px;">
+      <div class="tag">Sample Family</div>
+      <h2>Where sample 07 sits in the series</h2>
+      <div class="cols-3">
+        <div class="col-card col-grey">
+          <div class="col-title">05 · helloworld.agent</div>
+          <div class="col-item">Microsoft.Extensions.AI</div>
+          <div class="col-item"><code>IChatClient</code> + <code>UseFunctionInvocation()</code></div>
+          <div class="col-item">Direct to Azure OpenAI</div>
+          <div class="col-item">~190 lines</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">06 · via.api.management</div>
+          <div class="col-item">Microsoft.Extensions.AI</div>
+          <div class="col-item">Same <code>IChatClient</code> pipeline as 05</div>
+          <div class="col-item">Routed through <strong>APIM</strong> (<code>OpenAIClient</code> + subscription key header)</div>
+          <div class="col-item">~175 lines</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">07 · agentsdk (this sample)</div>
+          <div class="col-item">Microsoft Agent Framework</div>
+          <div class="col-item"><code>AIAgent</code> + <code>.AsAIAgent()</code></div>
+          <div class="col-item">Direct to Azure OpenAI (like 05, not 06)</div>
+          <div class="col-item">~150 lines</div>
+        </div>
+      </div>
+      <div class="callout callout-blue" style="margin-top:20px;">
+        Sample 07 forks from <strong>sample 05's</strong> scenario and swaps the framework. It does <em>not</em> add the APIM routing that sample 06 introduced — that remains a separate axis of variation in the series.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: What changed vs Sample 05 -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Diff · vs Sample 05</div>
+      <h2>What changed since sample 05</h2>
+      <div class="two-col">
+        <div class="col-card col-grey">
+          <div class="col-title">Removed</div>
+          <div class="col-item rm">The <code>IChatClient</code> builder pipeline (<code>AsBuilder()...UseFunctionInvocation()...Build()</code> as the final call site)</div>
+          <div class="col-item rm"><code>UseFunctionInvocation()</code> middleware — no longer needed, MAF owns the loop</div>
+          <div class="col-item rm">Manual <code>List&lt;ChatMessage&gt;</code> history with a <code>ChatRole.System</code> message</div>
+          <div class="col-item rm"><code>ChatOptions { Tools = [...], ToolMode = Auto }</code> passed per call</div>
+          <div class="col-item rm"><code>response.Usage</code> — token counts read straight off the call</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">Added</div>
+          <div class="col-item add"><code>Microsoft.Agents.AI</code> + <code>Microsoft.Agents.AI.OpenAI</code> NuGet packages</div>
+          <div class="col-item add"><code>.AsIChatClient().AsBuilder()...Build().AsAIAgent(instructions, name, tools)</code> — one agent object built once</div>
+          <div class="col-item add">System prompt moved to the <code>instructions:</code> parameter</div>
+          <div class="col-item add">Tools registered once at construction, not per call</div>
+          <div class="col-item add"><code>agent.RunAsync(userPrompt)</code> returning <code>AgentResponse</code> (still exposes <code>.Usage</code> in this MAF version, via <code>.Text</code> + <code>.Usage</code>)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: What changed vs Sample 06 -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Diff · vs Sample 06</div>
+      <h2>What changed since sample 06</h2>
+      <p style="margin-bottom:16px;">Sample 06 layered APIM routing on top of the sample 05 pattern. Sample 07 goes a different direction — same MAF swap as the sample 05 diff, but it drops the APIM hop entirely rather than combining both.</p>
+      <div class="two-col">
+        <div class="col-card col-grey">
+          <div class="col-title">Removed (relative to 06)</div>
+          <div class="col-item rm">Routing through Azure API Management</div>
+          <div class="col-item rm"><code>OpenAIClient</code> + <code>Ocp-Apim-Subscription-Key</code> header on <code>HttpClient</code></div>
+          <div class="col-item rm">Dependency on an APIM inbound policy to inject the real <code>api-key</code></div>
+          <div class="col-item rm"><code>UseFunctionInvocation()</code> middleware (same removal as vs. sample 05)</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">Added (relative to 06)</div>
+          <div class="col-item add"><code>AzureOpenAIClient</code> talking directly to the Azure OpenAI endpoint</div>
+          <div class="col-item add"><code>AIAgent</code> / <code>.AsAIAgent()</code> from Microsoft Agent Framework</div>
+          <div class="col-item add">Config shape simplified — <code>Endpoint</code> is the Azure OpenAI resource URL, not an APIM gateway URL</div>
+        </div>
+      </div>
+      <div class="callout callout-amber" style="margin-top:16px;">
+        <strong>Net effect:</strong> sample 07 changes two things sample 06 did not touch — the client library gateway (no APIM) and the agent abstraction (MAF instead of ME.AI). It is best read as "sample 05 rebuilt on MAF," not as a superset of sample 06.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: Code comparison -->
+  <div class="slide">
+    <div class="content" style="max-width:980px;">
+      <div class="tag">Code Comparison</div>
+      <h2>Building &amp; running the agent — old vs new</h2>
+      <div class="two-col" style="gap:16px;">
+        <div>
+          <div style="font-size:0.8rem; font-weight:700; color:#374151; margin-bottom:8px;">Samples 05 / 06 · Microsoft.Extensions.AI</div>
+          <pre><span class="type">IChatClient</span> chatClient =
+  <span class="kw">new</span> <span class="type">AzureOpenAIClient</span>(uri, key)
+    .<span class="mth">GetChatClient</span>(deployment)
+    .<span class="mth">AsIChatClient</span>()
+    .<span class="mth">AsBuilder</span>()
+    .<span class="mth">UseFunctionInvocation</span>()
+    .<span class="mth">UseOpenTelemetry</span>(o => ...)
+    .<span class="mth">Build</span>();
+
+<span class="kw">var</span> messages = <span class="kw">new</span> <span class="type">List</span>&lt;<span class="type">ChatMessage</span>&gt;
+{
+  <span class="kw">new</span>(<span class="type">ChatRole</span>.System, systemPrompt),
+  <span class="kw">new</span>(<span class="type">ChatRole</span>.User, userPrompt),
+};
+<span class="kw">var</span> options = <span class="kw">new</span> <span class="type">ChatOptions</span>
+{ Tools = [t1, t2, t3], ToolMode = Auto };
+
+<span class="type">ChatResponse</span> response = <span class="kw">await</span> chatClient
+  .<span class="mth">GetResponseAsync</span>(messages, options);</pre>
+        </div>
+        <div>
+          <div style="font-size:0.8rem; font-weight:700; color:#1d4ed8; margin-bottom:8px;">Sample 07 · Microsoft Agent Framework</div>
+          <pre><span class="type">AIAgent</span> agent =
+  <span class="kw">new</span> <span class="type">AzureOpenAIClient</span>(uri, key)
+    .<span class="mth">GetChatClient</span>(deployment)
+    .<span class="mth">AsIChatClient</span>()
+    .<span class="mth">AsBuilder</span>()
+    .<span class="mth">UseOpenTelemetry</span>(o => ...)
+    .<span class="mth">Build</span>()
+    .<span class="hi">AsAIAgent</span>(
+      instructions: systemPrompt,
+      name: <span class="str">"helloworld-agent-agentsdk"</span>,
+      tools: [t1, t2, t3]);
+
+<span class="cmt">// No message list, no ChatOptions,</span>
+<span class="cmt">// no UseFunctionInvocation() — MAF</span>
+<span class="cmt">// owns the tool-call loop internally.</span>
+<span class="type">AgentResponse</span> r =
+  <span class="kw">await</span> agent.<span class="mth">RunAsync</span>(userPrompt);</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Key differences table -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Comparison</div>
+      <h2>All three samples at a glance</h2>
+      <table>
+        <thead>
+          <tr>
+            <th class="grey">Aspect</th>
+            <th class="grey">05 · ME.AI</th>
+            <th class="grey">06 · ME.AI + APIM</th>
+            <th class="blue">07 · MAF</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Primary type</td><td><code>IChatClient</code></td><td><code>IChatClient</code></td><td><code>AIAgent</code></td></tr>
+          <tr><td>Client</td><td><code>AzureOpenAIClient</code></td><td><code>OpenAIClient</code> + APIM headers</td><td><code>AzureOpenAIClient</code></td></tr>
+          <tr><td>Routing</td><td>Direct to Azure OpenAI</td><td>Via APIM gateway</td><td>Direct to Azure OpenAI</td></tr>
+          <tr><td>Tool-call loop</td><td><code>UseFunctionInvocation()</code></td><td><code>UseFunctionInvocation()</code></td><td>Owned internally by MAF</td></tr>
+          <tr><td>System prompt</td><td><code>ChatMessage(System, …)</code></td><td><code>ChatMessage(System, …)</code></td><td><code>instructions:</code> on the agent</td></tr>
+          <tr><td>Tool registration</td><td><code>ChatOptions.Tools</code> per call</td><td><code>ChatOptions.Tools</code> per call</td><td>At construction via <code>tools:</code></td></tr>
+          <tr><td>Invocation</td><td><code>GetResponseAsync(messages, options)</code></td><td><code>GetResponseAsync(messages, options)</code></td><td><code>RunAsync(userPrompt)</code></td></tr>
+          <tr><td>Return type</td><td><code>ChatResponse</code></td><td><code>ChatResponse</code></td><td><code>AgentResponse</code></td></tr>
+          <tr><td>Token usage</td><td><code>response.Usage</code></td><td><code>response.Usage</code></td><td><code>agentResponse.Usage</code> (present, read the same way)</td></tr>
+          <tr><td>Key NuGet</td><td><code>Microsoft.Extensions.AI</code></td><td><code>Microsoft.Extensions.AI</code></td><td><code>Microsoft.Agents.AI</code>, <code>Microsoft.Agents.AI.OpenAI</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Telemetry -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Observability</div>
+      <h2>Application Insights — what stays the same</h2>
+      <p style="margin-bottom:16px;">MAF wraps the OpenAI <code>ChatClient</code> as an <code>IChatClient</code> internally, so the same <code>gen_ai.*</code> semantic-convention spans and the <code>Microsoft.Extensions.AI</code> / <code>Experimental.Microsoft.Extensions.AI</code> activity sources are emitted regardless of which sample is running.</p>
+      <table>
+        <thead>
+          <tr><th class="grey">Telemetry aspect</th><th class="grey">05 / 06 (ME.AI)</th><th class="blue">07 (MAF)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Root span (<code>run-ai-agent</code>)</td><td>Custom, <code>ActivityKind.Server</code></td><td>Same pattern, still hand-added</td></tr>
+          <tr><td>Custom agent dependency span</td><td>Added manually with <code>gen_ai.agent.name</code> tags</td><td>Still added manually — MAF does not set these tags on its own</td></tr>
+          <tr><td><code>gen_ai.client.token.usage</code> metric</td><td>✅ via ME.AI meter</td><td>✅ same meter, MAF sits above it</td></tr>
+          <tr><td>Sensitive data capture</td><td><code>EnableSensitiveData = true</code></td><td>Same flag, same behaviour</td></tr>
+          <tr><td>App Insights Agent Preview blade</td><td>✅ with custom span</td><td>✅ with the same custom span</td></tr>
+        </tbody>
+      </table>
+      <div class="callout callout-blue" style="margin-top:16px;">
+        <strong>Bottom line:</strong> switching to MAF does not change what you have to instrument by hand. The custom <code>Invoke Hello World Agent</code> span with <code>gen_ai.agent.name</code> / <code>gen_ai.operation.name</code> is still required in sample 07, exactly as it was in samples 05 and 06.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: Why this sample exists / when to use -->
+  <div class="slide">
+    <div class="content" style="max-width:860px;">
+      <div class="tag">Takeaways</div>
+      <h2>Why this sample exists</h2>
+      <div class="two-col" style="margin-bottom:18px;">
+        <div class="col-card col-blue">
+          <div class="col-title">Use sample 07 as a reference when…</div>
+          <div class="col-item">You want the shortest path to a working multi-tool Azure OpenAI agent (~150 lines)</div>
+          <div class="col-item">You'd rather not hand-write the tool-call loop or manage message history yourself</div>
+          <div class="col-item">You're evaluating Microsoft Agent Framework for a new project and want a like-for-like baseline against sample 05</div>
+          <div class="col-item">You plan to grow into multi-agent orchestration later and want to start on the framework built for it</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Still reach for sample 05 / 06 when…</div>
+          <div class="col-item">You need per-call token usage or fine-grained control over the message list (05)</div>
+          <div class="col-item">You need to route through APIM for governance, quota, or key rotation (06)</div>
+          <div class="col-item">You're building a library others will consume and want the lowest-level, most composable API</div>
+        </div>
+      </div>
+      <div class="callout callout-grey">
+        See <a href="../../08.Agents.SDK.Differences/Presentation.html">08.Agents.SDK.Differences</a> for the deeper framework-vs-framework comparison this sample is drawn from, and <code>Documentation/ReadMe.Frameworks.md</code> in this folder for the pros/cons written up in prose.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 9</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dotsEl = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  let cur = 0;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => show(i);
+    dotsEl.appendChild(d);
+  });
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    dotsEl.children[cur].classList.remove('active');
+    cur = n;
+    slides[cur].classList.add('active');
+    dotsEl.children[cur].classList.add('active');
+    counter.textContent = (cur + 1) + ' / ' + slides.length;
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === slides.length - 1;
+  }
+
+  function go(d) { if (cur + d >= 0 && cur + d < slides.length) show(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+</script>
+</body>
+</html>
