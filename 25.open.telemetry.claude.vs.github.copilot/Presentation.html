@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Claude Code vs GitHub Copilot — OTEL Telemetry Differences</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; overflow-y: auto; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #1d4ed8; margin-bottom: 14px; }
+  h1 { font-size: 2.3rem; font-weight: 700; line-height: 1.18; color: #111827; text-align: center; }
+  h1 span.blue   { color: #1d4ed8; }
+  h1 span.purple { color: #8250df; }
+  h1 span.green  { color: #15803d; }
+  h1 span.orange { color: #b45309; }
+  h2 { font-size: 1.7rem; font-weight: 600; color: #111827; margin-bottom: 22px; }
+  .subtitle { font-size: 1.05rem; color: #6b7280; margin-top: 16px; max-width: 700px; text-align: center; line-height: 1.6; }
+  p { font-size: 0.95rem; color: #6b7280; line-height: 1.7; max-width: 860px; }
+  .content { width: 100%; max-width: 1000px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 7px 9px; border-bottom: 2px solid #e5e7eb; }
+  th.blue   { color: #1d4ed8; }
+  th.purple { color: #8250df; }
+  th.green  { color: #15803d; }
+  th.orange { color: #b45309; }
+  th.grey   { color: #6b7280; }
+  td { padding: 7px 9px; font-size: 0.78rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: top; }
+  td:first-child { color: #374151; font-weight: 600; white-space: nowrap; }
+  td code { font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.74rem; color: #0550ae; background:#f0f4ff; padding:1px 5px; border-radius:4px; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 14px 18px; font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.74rem; line-height: 1.6; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw  { color: #cf222e; }
+  .key { color: #0550ae; }
+  .str { color: #0a3069; }
+  .cmt { color: #6e7781; font-style: italic; }
+  .hi  { color: #1d4ed8; font-weight: 700; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.77rem; font-weight: 600; margin: 3px; }
+  .pill-blue   { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-purple { background: #f3e8ff; color: #7c3aed; border: 1px solid #c4b5fd; }
+  .pill-green  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .pill-orange { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .pill-grey   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; width: 100%; }
+  .cols-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; width: 100%; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+  .col-card { border-radius: 10px; padding: 16px 18px; }
+  .col-purple { background: #faf5ff; border: 2px solid #c4b5fd; }
+  .col-blue   { background: #eff6ff; border: 2px solid #93c5fd; }
+  .col-green  { background: #f0fdf4; border: 2px solid #86efac; }
+  .col-orange { background: #fffbeb; border: 2px solid #fcd34d; }
+  .col-grey   { background: #f9fafb; border: 2px solid #e5e7eb; }
+  .col-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 10px; }
+  .col-purple .col-title { color: #7c3aed; }
+  .col-blue   .col-title { color: #1d4ed8; }
+  .col-green  .col-title { color: #15803d; }
+  .col-orange .col-title { color: #b45309; }
+  .col-grey   .col-title { color: #374151; }
+  .col-item { font-size: 0.8rem; color: #374151; line-height: 1.5; margin-bottom: 6px; padding-left: 14px; position: relative; }
+  .col-item::before { content: '•'; position: absolute; left: 0; color: #9ca3af; }
+  .col-item.num { padding-left: 22px; }
+  .col-item.num::before { content: attr(data-n); font-weight: 700; color: #1d4ed8; left: 0; }
+
+  .callout { border-radius: 8px; padding: 10px 16px; font-size: 0.8rem; }
+  .callout-amber  { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .callout-blue   { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout-green  { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+  .callout-grey   { background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; }
+  .callout-purple { background: #faf5ff; border: 1px solid #c4b5fd; color: #6b21a8; }
+  .callout-red    { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+
+  .flow { display: flex; align-items: center; gap: 0; width: 100%; flex-wrap: nowrap; margin: 16px 0; }
+  .flow-box { background: #eff6ff; border: 2px solid #93c5fd; border-radius: 8px; padding: 10px 14px; font-size: 0.78rem; font-weight: 600; color: #1d4ed8; text-align: center; flex: 1; }
+  .flow-box.green  { background: #f0fdf4; border-color: #86efac; color: #15803d; }
+  .flow-box.purple { background: #faf5ff; border-color: #c4b5fd; color: #7c3aed; }
+  .flow-box.orange { background: #fffbeb; border-color: #fcd34d; color: #b45309; }
+  .flow-box.grey   { background: #f9fafb; border-color: #e5e7eb; color: #374151; }
+  .flow-arrow { font-size: 1.2rem; color: #9ca3af; padding: 0 6px; flex-shrink: 0; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #1d4ed8; color: #1d4ed8; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #1d4ed8; }
+  .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 25</div>
+    <div class="tag">OpenTelemetry · Application Insights · Claude Code vs GitHub Copilot</div>
+    <h1><span class="purple">Claude Code</span> vs <span class="blue">GitHub Copilot</span><br/>What their OTEL telemetry<br/>actually looks like</h1>
+    <p class="subtitle">Both products export OpenTelemetry into Application Insights — but the two exporters reflect genuinely different design philosophies, and that shows up in almost every dashboard and query you build against them.</p>
+    <div style="margin-top:36px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-purple">Claude Code</span>
+      <span class="pill pill-blue">GitHub Copilot</span>
+      <span class="pill pill-green">Application Insights</span>
+      <span class="pill pill-orange">KQL &amp; Dashboards</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: Benefit of this presentation -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Why Watch This</div>
+      <h2>What you'll walk away with</h2>
+      <div class="cols-3">
+        <div class="col-card col-purple">
+          <div class="col-title">A translation map</div>
+          <div class="col-item">The field-by-field equivalence between Claude Code and Copilot telemetry, so you're not reverse-engineering it from scratch</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">Avoid silent under-counting</div>
+          <div class="col-item">The exact filters (<code>instrumentationlibrary.name</code>, both Copilot clients) that, if skipped, quietly drop rows or leak in unrelated telemetry</div>
+        </div>
+        <div class="col-card col-green">
+          <div class="col-title">Know what's actually reportable</div>
+          <div class="col-item">Which dashboards are realistic per product <em>before</em> you promise them — e.g. per-user usage is a Claude Code report, not a Copilot one</div>
+        </div>
+      </div>
+      <div class="callout callout-blue" style="margin-top:18px;">
+        In short: fifteen minutes here saves the false starts of building a dashboard against the wrong mental model of the data.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Why this matters -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Why This Matters</div>
+      <h2>"Same thing twice" — until you write the first query</h2>
+      <div class="cols-3">
+        <div class="col-card col-grey">
+          <div class="col-title">On the surface</div>
+          <div class="col-item">Both products export OpenTelemetry</div>
+          <div class="col-item">Both land in the same Application Insights resource</div>
+          <div class="col-item">Both track model calls, tokens, tool use</div>
+        </div>
+        <div class="col-card col-orange">
+          <div class="col-title">In practice</div>
+          <div class="col-item">Different primary table, different field naming, different identity model</div>
+          <div class="col-item">Structurally different queries for the exact same question</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">Why it matters for dashboards</div>
+          <div class="col-item">A dashboard built for one product's schema does not transfer to the other</div>
+          <div class="col-item">Some reports (per-user usage) are possible for one product and impossible for the other — not a build choice, a data constraint</div>
+        </div>
+      </div>
+      <div class="callout callout-blue" style="margin-top:18px;">
+        This deck captures what we learned building dashboards against both, as a reference for anyone querying this data directly.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: At a glance part 1 -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">At A Glance · 1 of 2</div>
+      <h2>Schema, identity &amp; correlation</h2>
+      <table>
+        <thead>
+          <tr><th class="grey">Aspect</th><th class="purple">Claude Code</th><th class="blue">GitHub Copilot</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Primary table</td><td><code>traces</code> — discrete named events</td><td><code>dependencies</code> — one row per call/span</td></tr>
+          <tr><td>Per-user identity</td><td><code>user.email</code>, <code>user.id</code>, <code>org.name</code></td><td>None, anywhere</td></tr>
+          <tr><td>Prompt tracking</td><td>First-class <code>prompt.id</code> + <code>event.sequence</code></td><td>Best-effort — buried in a larger field, no ordered chain</td></tr>
+          <tr><td>Session tracking</td><td><code>session.id</code></td><td><code>chat_session_id</code> (VS Code) / <code>conversation.id</code> (CLI)</td></tr>
+          <tr><td>Client sources</td><td>One surface</td><td>Two — VS Code extension &amp; CLI, must both be filtered</td></tr>
+          <tr><td>Field naming</td><td>Flat, Anthropic-specific</td><td>OTEL GenAI semantic convention</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: At a glance part 2 -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">At A Glance · 2 of 2</div>
+      <h2>Cost, tools &amp; errors</h2>
+      <table>
+        <thead>
+          <tr><th class="grey">Aspect</th><th class="purple">Claude Code</th><th class="blue">GitHub Copilot</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Cost</td><td>Pre-computed <code>cost_usd</code> per event</td><td>Not emitted</td></tr>
+          <tr><td>Tool call detail</td><td>Two events: <code>tool_decision</code> + <code>tool_result</code></td><td>One <code>execute_tool</code> row with a plain <code>success</code> bool</td></tr>
+          <tr><td>Error telemetry</td><td>Dedicated <code>claude_code.api_error</code> event</td><td>None observed — inferred from <code>success == false</code></td></tr>
+          <tr><td>Reasoning effort</td><td>Flat <code>effort</code> field</td><td>Nested three JSON parses deep</td></tr>
+          <tr><td>MCP server telemetry</td><td>Dedicated <code>mcp_server_connection</code> event</td><td>Not observed</td></tr>
+          <tr><td>Sub-feature tracking</td><td><code>skill.name</code> (Claude Skills)</td><td><code>gen_ai.agent.name</code> (chat / auto-title / NES / inline edit)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: Table choice -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">1 · Table Choice</div>
+      <h2><code>traces</code> vs <code>dependencies</code></h2>
+      <div class="two-col">
+        <div>
+          <div class="col-card col-purple" style="margin-bottom:12px;">
+            <div class="col-title">Claude Code → traces</div>
+            <div class="col-item">Every prompt, model call, tool decision is its own named log-style event</div>
+            <div class="col-item">Discriminated by the native <code>message</code> column</div>
+          </div>
+          <pre>claude_code.user_prompt
+claude_code.api_request
+claude_code.api_error
+claude_code.tool_decision
+claude_code.tool_result
+claude_code.mcp_server_connection</pre>
+        </div>
+        <div>
+          <div class="col-card col-blue" style="margin-bottom:12px;">
+            <div class="col-title">GitHub Copilot → dependencies</div>
+            <div class="col-item">One row per outbound call, distinguished by <code>gen_ai.operation.name</code></div>
+            <div class="col-item">Native columns Claude's rows don't have: <code>duration</code>, <code>success</code>, <code>resultCode</code>, <code>performanceBucket</code></div>
+          </div>
+          <div class="callout callout-grey">
+            Copilot only touches <code>traces</code> for one thing — counting session starts (<code>copilot_chat.session.start</code>)
+          </div>
+        </div>
+      </div>
+      <div class="callout callout-blue" style="margin-top:14px;">
+        <strong>Why it matters:</strong> <code>traces</code> reads like an event log; <code>dependencies</code> reads like a call log. The same question ("how many tool calls failed today?") is a structurally different query in each product.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Field naming -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">2 · Field Naming</div>
+      <h2>Bespoke fields vs. an industry-standard convention</h2>
+      <div class="two-col">
+        <div class="col-card col-purple">
+          <div class="col-title">Claude Code — flat &amp; bespoke</div>
+          <div class="col-item"><code>input_tokens</code>, <code>output_tokens</code>, <code>cost_usd</code>, <code>model</code>, <code>effort</code></div>
+          <div class="col-item">Anthropic invented these names for Claude Code specifically</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">GitHub Copilot — OTEL GenAI semantic convention</div>
+          <div class="col-item"><code>gen_ai.usage.input_tokens</code>, <code>gen_ai.request.model</code>, <code>gen_ai.operation.name</code></div>
+          <div class="col-item">Shared by many GenAI tools, not just Copilot</div>
+        </div>
+      </div>
+      <div class="callout callout-amber" style="margin-top:16px;">
+        <strong>Real consequence:</strong> generic field names could collide with an unrelated GenAI tool's telemetry in the same App Insights resource. Every Copilot query in this app filters on <code>instrumentationlibrary.name == "copilot-chat"</code> (VS Code) or <code>"github-copilot"</code> (CLI) <em>first</em>, before touching any <code>gen_ai.*</code> field. Claude's bespoke naming doesn't need this guard.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Identity & privacy -->
+  <div class="slide">
+    <div class="content" style="max-width:880px;">
+      <div class="tag">3 · Identity &amp; Privacy</div>
+      <h2>Per-user reporting: possible for one, impossible for the other</h2>
+      <div class="two-col">
+        <div class="col-card col-purple">
+          <div class="col-title">Claude Code</div>
+          <div class="col-item">Emits real user &amp; org identity on every event: <code>user.email</code>, <code>user.id</code>, <code>org.name</code></div>
+          <div class="col-item">Enables a per-user leaderboard, an inactive-user ("waste") report, or an org-level rollup</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">GitHub Copilot</div>
+          <div class="col-item">No per-user identity anywhere — not a blank field, an <strong>absent</strong> one</div>
+          <div class="col-item">Every Copilot dashboard is necessarily workspace- or session-scoped, never per-user</div>
+        </div>
+      </div>
+      <div class="callout callout-red" style="margin-top:18px;">
+        Worth calling out explicitly in a presentation: someone will ask "can we see which developer is using the most tokens?" — the honest answer for GitHub Copilot's default telemetry is <strong>no</strong>. That's a hard constraint baked into the data, not a feature we chose not to build.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: Prompt & session correlation -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">4 · Prompt &amp; Session Correlation</div>
+      <h2>Reconstructing "the story of one request"</h2>
+      <div class="two-col">
+        <div>
+          <div class="col-card col-purple" style="margin-bottom:10px;">
+            <div class="col-title">Claude Code — designed sequence</div>
+            <div class="col-item">Every user prompt gets a durable <code>prompt.id</code></div>
+            <div class="col-item">Every related event (model request, tool decisions/results, API error) carries the <em>same</em> <code>prompt.id</code>, ordered by explicit <code>event.sequence</code></div>
+            <div class="col-item"><code>session.id</code> groups many prompts into one session</div>
+          </div>
+          <pre><span class="key">traces</span>
+| <span class="kw">extend</span> prompt_id_ = tostring(customDimensions.[<span class="str">"prompt.id"</span>])
+| <span class="kw">where</span> prompt_id_ == <span class="str">'&lt;id&gt;'</span>
+| <span class="kw">order by</span> toint(customDimensions.[<span class="str">"event.sequence"</span>]) asc</pre>
+        </div>
+        <div>
+          <div class="col-card col-blue" style="margin-bottom:10px;">
+            <div class="col-title">GitHub Copilot — flatter correlation</div>
+            <div class="col-item">No "prompt" concept or ordered event chain</div>
+            <div class="col-item">Closest equivalent: <code>chat_session_id</code> (VS Code) or <code>conversation.id</code> (CLI)</div>
+            <div class="col-item">Rows tied together mostly by <code>timestamp</code>, not an explicit sequence number</div>
+          </div>
+          <div class="callout callout-grey">
+            <em>Aside:</em> neither product uses App Insights' native <code>operation_Id</code> for this — both roll their own correlation key in <code>customDimensions</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: Prompt text capture -->
+  <div class="slide">
+    <div class="content" style="max-width:880px;">
+      <div class="tag">5 · Prompt Text Capture</div>
+      <h2>A direct field read vs. a regex extraction</h2>
+      <div class="two-col">
+        <div>
+          <div class="col-card col-purple" style="margin-bottom:10px;">
+            <div class="col-title">Claude Code</div>
+            <div class="col-item">Prompt text lives in its own clean field</div>
+          </div>
+          <pre>customDimensions.prompt
+<span class="cmt">// on the claude_code.user_prompt event</span></pre>
+        </div>
+        <div>
+          <div class="col-card col-blue" style="margin-bottom:10px;">
+            <div class="col-title">GitHub Copilot</div>
+            <div class="col-item">Prompt text lives inside <code>copilot_chat.user_request</code>, wrapped in hundreds of lines of injected workspace context</div>
+          </div>
+          <pre>tostring(customDimensions.[<span class="str">"copilot_chat.user_request"</span>])
+<span class="cmt">// then regex-extract &lt;userRequest&gt;...&lt;/userRequest&gt;
+// the raw field is not display-ready</span></pre>
+        </div>
+      </div>
+      <div class="callout callout-amber" style="margin-top:16px;">
+        One of the more surprising differences in practice — the same "what did the user ask?" question is a direct field read for Claude and a regex extraction for Copilot.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 11: Token & cost fields -->
+  <div class="slide">
+    <div class="content" style="max-width:940px;">
+      <div class="tag">6 · Token &amp; Cost Fields</div>
+      <h2>Same four concepts, different names — and one missing field</h2>
+      <table>
+        <thead>
+          <tr><th class="grey">Concept</th><th class="purple">Claude Code</th><th class="blue">GitHub Copilot</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Input tokens</td><td><code>customDimensions.input_tokens</code></td><td><code>customDimensions.["gen_ai.usage.input_tokens"]</code></td></tr>
+          <tr><td>Output tokens</td><td><code>customDimensions.output_tokens</code></td><td><code>customDimensions.["gen_ai.usage.output_tokens"]</code></td></tr>
+          <tr><td>Cache write tokens</td><td><code>customDimensions.cache_creation_tokens</code></td><td><code>customDimensions.["gen_ai.usage.cache_creation.input_tokens"]</code></td></tr>
+          <tr><td>Cache read tokens</td><td><code>customDimensions.cache_read_tokens</code></td><td><code>customDimensions.["gen_ai.usage.cache_read.input_tokens"]</code></td></tr>
+          <tr><td>Cost (USD)</td><td><code>customDimensions.cost_usd</code> — <strong>pre-computed</strong></td><td>Not emitted at all</td></tr>
+        </tbody>
+      </table>
+      <div class="callout callout-green" style="margin-top:16px;">
+        Claude Code's <code>cost_usd</code> is a genuine differentiator — cost reporting is a straight <code>sum()</code>. GitHub Copilot emits no cost field; any cost figure has to be estimated externally from token counts and a rate card, and GitHub doesn't publish per-token Copilot pricing the way OpenAI/Anthropic publish API pricing — so a Copilot cost estimate is inherently softer.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 12: Tool & sub-agent usage -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">7 · Tool &amp; Sub-Agent Usage</div>
+      <h2>One tool call, two events vs. one row</h2>
+      <div class="two-col">
+        <div class="col-card col-purple">
+          <div class="col-title">Claude Code</div>
+          <div class="col-item"><code>tool_decision</code> — how the call was authorized (<code>decision.source</code>: auto-approved, user-approved, rejected)</div>
+          <div class="col-item"><code>tool_result</code> — whether it succeeded</div>
+          <div class="col-item">A real governance signal: "how often do users have to manually approve a tool call?" is a first-class query</div>
+          <div class="col-item">Sub-feature: <code>skill.name</code> identifies which Claude Skill ran</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">GitHub Copilot</div>
+          <div class="col-item">Single <code>execute_tool</code> row with <code>gen_ai.tool.name</code> and a native <code>success</code> bool</div>
+          <div class="col-item">No approval/decision concept — Copilot's tool-use model has no comparable per-call authorization step</div>
+          <div class="col-item">Sub-feature: <code>gen_ai.agent.name</code> — <code>"GitHub Copilot Chat"</code> (main chat), <code>"title"</code> (auto-title), <code>"XtabProvider"</code> (Next Edit Suggestions), <code>"panel/editAgent"</code> (inline edit)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 13: Client differentiation & errors -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">8 &amp; 9 · Client Sources &amp; Error Telemetry</div>
+      <h2>Two clients to filter, one missing error event</h2>
+      <div class="two-col">
+        <div class="col-card col-blue">
+          <div class="col-title">GitHub Copilot — two clients, same shape</div>
+          <div class="col-item">VS Code extension: <code>instrumentationlibrary.name == "copilot-chat"</code></div>
+          <div class="col-item">Copilot CLI: <code>"github-copilot"</code></div>
+          <div class="col-item">Forgetting either filter is the easiest way to silently under-count usage</div>
+          <div class="col-item">No dedicated error event — reliability is inferred from <code>success == false</code>, or the generic (unconfirmed) <code>exceptions</code> table</div>
+        </div>
+        <div class="col-card col-purple">
+          <div class="col-title">Claude Code — one surface</div>
+          <div class="col-item">No client split in the same way — one product surface</div>
+          <div class="col-item"><code>terminal.type</code> / <code>service.name</code> describe the environment (which IDE, which terminal), not separate applications</div>
+          <div class="col-item">Dedicated <code>claude_code.api_error</code> event — "show me recent errors" is a direct query</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 14: Practical takeaways -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Practical Takeaways</div>
+      <h2>What this means for dashboards &amp; reporting</h2>
+      <div class="col-card col-orange" style="margin-bottom:14px;">
+        <div class="col-item num" data-n="1.">Both schemas need <strong>injection-style escaping</strong> — prompt text, tool arguments, session/conversation IDs are client-emitted content, not trusted input, before they're interpolated into a follow-up KQL query</div>
+        <div class="col-item num" data-n="2.">Always scope GitHub Copilot queries by <strong>instrumentationlibrary.name</strong> before touching any <code>gen_ai.*</code> field — those names are a shared industry convention, not Copilot-exclusive</div>
+        <div class="col-item num" data-n="3.">Claude Code's flat fields are simpler to query <strong>today</strong>, but track one vendor's naming choices that could change without notice; Copilot's OTEL GenAI convention is more likely to stay portable, at the cost of shallower per-product detail</div>
+        <div class="col-item num" data-n="4.">If per-user or per-org reporting is a requirement, <strong>Claude Code is the one of the two that supports it today</strong> — Copilot's default export has no per-user identity to report against, full stop</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 15: Summary -->
+  <div class="slide">
+    <div class="content" style="max-width:880px;">
+      <div class="tag">Summary</div>
+      <h2>Same goal, structurally different data</h2>
+      <div class="cols-3">
+        <div class="col-card col-purple">
+          <div class="col-title">Claude Code strengths</div>
+          <div class="col-item">Per-user &amp; org identity</div>
+          <div class="col-item">Pre-computed cost</div>
+          <div class="col-item">Ordered prompt/tool narrative</div>
+          <div class="col-item">Dedicated error &amp; MCP events</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">GitHub Copilot strengths</div>
+          <div class="col-item">Industry-standard field naming</div>
+          <div class="col-item">Native duration/success/resultCode columns</div>
+          <div class="col-item">Portable across GenAI tooling</div>
+        </div>
+        <div class="col-card col-green">
+          <div class="col-title">Bottom line</div>
+          <div class="col-item">Build dashboards per-product schema — don't assume one query style transfers</div>
+          <div class="col-item">Know upfront which reports each product's data can actually support</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 15</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dotsEl = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  let cur = 0;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => show(i);
+    dotsEl.appendChild(d);
+  });
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    dotsEl.children[cur].classList.remove('active');
+    cur = n;
+    slides[cur].classList.add('active');
+    dotsEl.children[cur].classList.add('active');
+    counter.textContent = (cur + 1) + ' / ' + slides.length;
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === slides.length - 1;
+  }
+
+  function go(d) { if (cur + d >= 0 && cur + d < slides.length) show(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+</script>
+</body>
+</html>

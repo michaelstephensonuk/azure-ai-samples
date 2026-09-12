@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OpenTelemetry Data Collector on Azure Container Apps — Centralized AI Telemetry</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; overflow-y: auto; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #1d4ed8; margin-bottom: 14px; }
+  h1 { font-size: 2.5rem; font-weight: 700; line-height: 1.15; color: #111827; text-align: center; }
+  h1 span.blue   { color: #1d4ed8; }
+  h1 span.purple { color: #8250df; }
+  h1 span.green  { color: #15803d; }
+  h1 span.orange { color: #b45309; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 24px; }
+  .subtitle { font-size: 1.05rem; color: #6b7280; margin-top: 16px; max-width: 680px; text-align: center; line-height: 1.6; }
+  p { font-size: 0.95rem; color: #6b7280; line-height: 1.7; max-width: 820px; }
+  .content { width: 100%; max-width: 960px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; border-bottom: 2px solid #e5e7eb; }
+  th.blue   { color: #1d4ed8; }
+  th.purple { color: #8250df; }
+  th.green  { color: #15803d; }
+  th.orange { color: #b45309; }
+  th.grey   { color: #6b7280; }
+  td { padding: 8px 10px; font-size: 0.82rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: top; }
+  td:first-child { color: #374151; font-weight: 600; white-space: nowrap; }
+  td code { font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.78rem; color: #0550ae; background:#f0f4ff; padding:1px 5px; border-radius:4px; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px 20px; font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.76rem; line-height: 1.6; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw  { color: #cf222e; }
+  .key { color: #0550ae; }
+  .str { color: #0a3069; }
+  .cmt { color: #6e7781; font-style: italic; }
+  .hi  { color: #1d4ed8; font-weight: 700; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.77rem; font-weight: 600; margin: 3px; }
+  .pill-blue   { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-purple { background: #f3e8ff; color: #7c3aed; border: 1px solid #c4b5fd; }
+  .pill-green  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .pill-orange { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .pill-grey   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; width: 100%; }
+  .cols-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; width: 100%; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+  .col-card { border-radius: 10px; padding: 18px 20px; }
+  .col-purple { background: #faf5ff; border: 2px solid #c4b5fd; }
+  .col-blue   { background: #eff6ff; border: 2px solid #93c5fd; }
+  .col-green  { background: #f0fdf4; border: 2px solid #86efac; }
+  .col-orange { background: #fffbeb; border: 2px solid #fcd34d; }
+  .col-grey   { background: #f9fafb; border: 2px solid #e5e7eb; }
+  .col-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 12px; }
+  .col-purple .col-title { color: #7c3aed; }
+  .col-blue   .col-title { color: #1d4ed8; }
+  .col-green  .col-title { color: #15803d; }
+  .col-orange .col-title { color: #b45309; }
+  .col-grey   .col-title { color: #374151; }
+  .col-item { font-size: 0.82rem; color: #374151; line-height: 1.55; margin-bottom: 6px; padding-left: 14px; position: relative; }
+  .col-item::before { content: '•'; position: absolute; left: 0; color: #9ca3af; }
+  .col-item.num { padding-left: 22px; }
+  .col-item.num::before { content: attr(data-n); font-weight: 700; color: #1d4ed8; left: 0; }
+
+  .callout { border-radius: 8px; padding: 10px 16px; font-size: 0.8rem; }
+  .callout-amber  { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .callout-blue   { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout-green  { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+  .callout-grey   { background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; }
+  .callout-purple { background: #faf5ff; border: 1px solid #c4b5fd; color: #6b21a8; }
+
+  .flow { display: flex; align-items: center; gap: 0; width: 100%; flex-wrap: nowrap; margin: 16px 0; }
+  .flow-box { background: #eff6ff; border: 2px solid #93c5fd; border-radius: 8px; padding: 10px 14px; font-size: 0.78rem; font-weight: 600; color: #1d4ed8; text-align: center; flex: 1; }
+  .flow-box.green  { background: #f0fdf4; border-color: #86efac; color: #15803d; }
+  .flow-box.purple { background: #faf5ff; border-color: #c4b5fd; color: #7c3aed; }
+  .flow-box.orange { background: #fffbeb; border-color: #fcd34d; color: #b45309; }
+  .flow-box.grey   { background: #f9fafb; border-color: #e5e7eb; color: #374151; }
+  .flow-arrow { font-size: 1.2rem; color: #9ca3af; padding: 0 6px; flex-shrink: 0; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #1d4ed8; color: #1d4ed8; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #1d4ed8; }
+  .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 24</div>
+    <div class="tag">OpenTelemetry · Azure Container Apps · Centralized Team Telemetry</div>
+    <h1>Run the OTel Collector as a <span class="blue">Container App</span><br/>instead of a <span class="purple">Windows Service</span></h1>
+    <p class="subtitle">Centralize configuration for the whole team, remove the need to install anything on developer machines, and stream the same VS Code AI telemetry into Application Insights.</p>
+    <div style="margin-top:36px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-blue">Azure Container Apps</span>
+      <span class="pill pill-purple">OTel Collector Contrib</span>
+      <span class="pill pill-green">Application Insights</span>
+      <span class="pill pill-orange">Log Analytics</span>
+      <span class="pill pill-grey">Centralized Config</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: The problem -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">The Problem</div>
+      <h2>The per-machine Windows service doesn't scale across a team</h2>
+      <div class="cols-3">
+        <div class="col-card col-orange">
+          <div class="col-title">Install on every machine</div>
+          <div class="col-item">The <a href="../20.open.telemetry.data.collector" style="color:#b45309;">Windows service approach</a> requires every developer to install and configure the OTel Collector locally</div>
+        </div>
+        <div class="col-card col-orange">
+          <div class="col-title">Configuration drift</div>
+          <div class="col-item">Connection string changes, exporter tweaks, or version upgrades need to be repeated on every dev machine</div>
+        </div>
+        <div class="col-card col-orange">
+          <div class="col-title">No shared control</div>
+          <div class="col-item">No central place to pause, rotate keys, or update the pipeline for the whole team at once</div>
+        </div>
+      </div>
+      <div class="callout callout-blue" style="margin-top:18px;">
+        <strong>Goal:</strong> keep the same collector, the same config approach, and the same Application Insights destination — but host the collector once, centrally, in Azure.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Architecture overview -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Architecture</div>
+      <h2>One collector, shared by the whole team</h2>
+      <div class="flow" style="margin-bottom:24px;">
+        <div class="flow-box purple">VS Code<br/><small>Copilot / Claude Code</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box grey">HTTPS<br/><small>container app FQDN</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box blue">Container App<br/><small>OTel Collector</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box green">Application<br/><small>Insights</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box orange">Log Analytics<br/><small>Workspace</small></div>
+      </div>
+      <div class="cols-3">
+        <div class="col-card col-grey">
+          <div class="col-title">1 · Azure resources</div>
+          <div class="col-item">Log Analytics workspace stores the data</div>
+          <div class="col-item">Application Insights is deployed pointing at that workspace</div>
+          <div class="col-item">A Container Apps Environment hosts the container app</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">2 · Container app</div>
+          <div class="col-item">Runs the OTel Collector Contrib image with public HTTPS ingress</div>
+          <div class="col-item">Points to Application Insights via the Azure Monitor exporter</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">3 · VS Code clients</div>
+          <div class="col-item">Copilot / Claude Code point at the container app's HTTPS endpoint, not <code>localhost</code></div>
+          <div class="col-item">Every developer shares the same endpoint — nothing to install</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Setup step 1 — platform resources -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Setup · Step 1</div>
+      <h2>Deploy Log Analytics, App Insights &amp; the Container Apps Environment</h2>
+      <pre><span class="cmt"># Log Analytics workspace</span>
+az monitor log-analytics workspace create -g rg-otel-collector -n law-otel-collector
+
+<span class="cmt"># App Insights, workspace-based, pointing at the workspace above</span>
+az monitor app-insights component create -g rg-otel-collector -a appi-otel-collector -l uksouth \
+  --workspace law-otel-collector
+
+<span class="cmt"># Container Apps Environment to host the collector</span>
+az containerapp env create -g rg-otel-collector -n cae-otel-collector -l uksouth</pre>
+      <div class="callout callout-blue" style="margin-top:16px;">
+        Application Insights is workspace-based — every table it collects (<code>dependencies</code>, <code>traces</code>, <code>customMetrics</code>) is queryable directly from the Log Analytics workspace too.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Setup step 2 — package the image -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Setup · Step 2</div>
+      <h2>Package the collector as a container image</h2>
+      <p style="margin-bottom:14px;">Same config.yaml approach as the Windows service, but the connection string now comes from an environment variable so it can be injected as a Container Apps secret:</p>
+      <div class="two-col" style="gap:14px;">
+        <div>
+          <div style="font-size:0.8rem;font-weight:700;color:#374151;margin-bottom:6px;">Dockerfile</div>
+          <pre><span class="kw">FROM</span> otel/opentelemetry-collector-contrib:0.157.0
+<span class="kw">COPY</span> config.yaml /etc/otelcol-contrib/config.yaml</pre>
+          <div style="font-size:0.8rem;font-weight:700;color:#374151;margin:14px 0 6px;">Build &amp; push to ACR</div>
+          <pre>az acr create -g rg-otel-collector -n acrotelcollector --sku Basic
+az acr build -r acrotelcollector -t otel-collector:0.157.0 .</pre>
+        </div>
+        <div>
+          <div style="font-size:0.8rem;font-weight:700;color:#374151;margin-bottom:6px;">config.yaml exporter</div>
+          <pre><span class="key">exporters</span>:
+  <span class="hi">azuremonitor</span>:
+    <span class="key">connection_string</span>: <span class="str">"${env:APPINSIGHTS_CONNECTION_STRING}"</span>
+    <span class="key">maxbatchsize</span>: 1024
+    <span class="key">maxbatchinterval</span>: 10s
+    <span class="key">spaneventsenabled</span>: <span class="kw">false</span></pre>
+        </div>
+      </div>
+      <div class="callout callout-amber" style="margin-top:14px;">
+        Nothing sensitive is baked into the image — the connection string is resolved from the environment at container start.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: Setup step 3 — deploy the container app -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Setup · Step 3</div>
+      <h2>Deploy the collector as a Container App</h2>
+      <pre>az containerapp create \
+  -g rg-otel-collector -n ca-otel-collector \
+  --environment cae-otel-collector \
+  --image acrotelcollector.azurecr.io/otel-collector:0.157.0 \
+  --registry-server acrotelcollector.azurecr.io \
+  <span class="hi">--target-port 4318 --ingress external</span> \
+  --secrets appinsights-connection-string=<span class="str">"&lt;CONNECTION-STRING&gt;"</span> \
+  --env-vars APPINSIGHTS_CONNECTION_STRING=secretref:appinsights-connection-string \
+  --min-replicas 1 --max-replicas 1</pre>
+      <div class="two-col" style="margin-top:16px;">
+        <div class="col-card col-blue">
+          <div class="col-title">Ingress</div>
+          <div class="col-item">Target port 4318 exposes OTLP/HTTP; Container Apps terminates TLS so clients call over HTTPS on 443</div>
+          <div class="col-item">OTLP/gRPC (4317) also works, but needs ingress transport set to <code>http2</code></div>
+        </div>
+        <div class="col-card col-purple">
+          <div class="col-title">Config &amp; scale</div>
+          <div class="col-item"><code>--min-replicas 1</code> keeps a warm instance so telemetry isn't dropped while scaling</div>
+          <div class="col-item">Rotating the connection string is one <code>az containerapp secret set</code> — no per-machine changes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Setup step 4 — VS Code -->
+  <div class="slide">
+    <div class="content" style="max-width:860px;">
+      <div class="tag">Setup · Step 4</div>
+      <h2>Point VS Code at the container app endpoint</h2>
+      <p style="margin-bottom:16px;">Same GitHub Copilot / Claude Code OpenTelemetry settings as the Windows service sample — only the endpoint changes:</p>
+      <div class="two-col">
+        <div class="col-card col-grey">
+          <div class="col-title">Before — Windows service</div>
+          <div class="col-item"><code>http://localhost:4318</code></div>
+          <div class="col-item">Requires the collector installed on this machine</div>
+        </div>
+        <div class="col-card col-green">
+          <div class="col-title">After — Container App</div>
+          <div class="col-item"><code>https://ca-otel-collector.&lt;region&gt;.azurecontainerapps.io</code></div>
+          <div class="col-item">Same URL for every developer — nothing to install locally</div>
+        </div>
+      </div>
+      <div class="callout callout-grey" style="margin-top:18px;">
+        Because the endpoint is a shared, public HTTPS URL, updates to the collector — new exporter settings, upgraded version, rotated connection string — reach every developer instantly without touching a single dev machine.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Verify -->
+  <div class="slide">
+    <div class="content" style="max-width:860px;">
+      <div class="tag">Verify</div>
+      <h2>Same verification, same Application Insights tables</h2>
+      <pre><span class="cmt"># Tail the collector's logs</span>
+az containerapp logs show -g rg-otel-collector -n ca-otel-collector --follow</pre>
+      <table style="margin-top:16px;">
+        <thead>
+          <tr>
+            <th class="grey">Table</th>
+            <th class="grey">What it contains</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>dependencies</code></td>
+            <td>Each LLM call as a dependency span — model, duration, status</td>
+          </tr>
+          <tr>
+            <td><code>traces</code></td>
+            <td>Log messages emitted during AI operations</td>
+          </tr>
+          <tr>
+            <td><code>customMetrics</code></td>
+            <td>Token counts — <code>gen_ai.client.token.usage</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout callout-green" style="margin-top:16px;">
+        Trigger a Copilot or Claude Code action in VS Code and confirm the event appears in App Insights → Transaction Search within ~30 seconds — the existing KQL queries and Workbooks from sample 20 work unchanged.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: Compare -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Compare</div>
+      <h2>Windows service vs. Container App</h2>
+      <table>
+        <thead>
+          <tr>
+            <th class="grey">Aspect</th>
+            <th class="orange">Windows service (sample 20)</th>
+            <th class="blue">Container App (this sample)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Where it runs</td>
+            <td>On every developer's machine</td>
+            <td>Once, centrally, in Azure</td>
+          </tr>
+          <tr>
+            <td>Per-developer effort</td>
+            <td>Install MSI, edit config.yaml, restart service</td>
+            <td>None — just point at a shared URL</td>
+          </tr>
+          <tr>
+            <td>Config changes</td>
+            <td>Repeated on every machine</td>
+            <td>One update, applies to everyone</td>
+          </tr>
+          <tr>
+            <td>Network exposure</td>
+            <td><code>localhost</code> only</td>
+            <td>Public HTTPS ingress on the container app</td>
+          </tr>
+          <tr>
+            <td>Best fit</td>
+            <td>Single developer, offline-friendly</td>
+            <td>Whole team, centrally managed</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: Summary -->
+  <div class="slide">
+    <div class="content" style="max-width:860px;">
+      <div class="tag">Summary</div>
+      <h2>Setup in four steps</h2>
+      <div class="col-card col-blue" style="margin-bottom:18px;">
+        <div class="col-item num" data-n="1.">Deploy <strong>Log Analytics</strong>, <strong>Application Insights</strong>, and a <strong>Container Apps Environment</strong></div>
+        <div class="col-item num" data-n="2.">Package the <strong>OTel Collector Contrib</strong> image with config.yaml, connection string read from an env var</div>
+        <div class="col-item num" data-n="3.">Deploy it as a <strong>Container App</strong> with public HTTPS ingress and the connection string as a secret</div>
+        <div class="col-item num" data-n="4.">Point every developer's <strong>VS Code</strong> Copilot / Claude Code settings at the container app's HTTPS endpoint</div>
+      </div>
+      <div class="cols-3">
+        <div class="col-card col-grey">
+          <div class="col-title">Same data, same tables</div>
+          <div class="col-item"><code>dependencies</code>, <code>traces</code>, <code>customMetrics</code> in App Insights — unchanged from sample 20</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Centralized</div>
+          <div class="col-item">One collector, one config, one place to rotate keys or upgrade</div>
+        </div>
+        <div class="col-card col-green">
+          <div class="col-title">Outcome</div>
+          <div class="col-item">Monitor, manage, and optimise token utilisation across the whole team — with zero install on developer machines</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 10</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dotsEl = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  let cur = 0;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => show(i);
+    dotsEl.appendChild(d);
+  });
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    dotsEl.children[cur].classList.remove('active');
+    cur = n;
+    slides[cur].classList.add('active');
+    dotsEl.children[cur].classList.add('active');
+    counter.textContent = (cur + 1) + ' / ' + slides.length;
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === slides.length - 1;
+  }
+
+  function go(d) { if (cur + d >= 0 && cur + d < slides.length) show(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+</script>
+</body>
+</html>

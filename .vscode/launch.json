@@ -77,6 +77,28 @@
       "cwd": "${workspaceFolder}/07.helloworld.agent.agentsdk",
       "console": "integratedTerminal",
       "stopAtEntry": false
+    },
+    {
+      "name": "foundry.agent.service.via.agent.sdk",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: foundry.agent.service.via.agent.sdk",
+      "program": "${workspaceFolder}/10.foundry.agent.service.via.agent.sdk/bin/Debug/net10.0/foundry.agent.service.via.agent.sdk.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/10.foundry.agent.service.via.agent.sdk",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "foundry.agent.service.via.apim",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: foundry.agent.service.via.apim",
+      "program": "${workspaceFolder}/11.foundry.agent.service.via.apim/bin/Debug/net10.0/foundry.agent.service.via.apim.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/11.foundry.agent.service.via.apim",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
     }
   ]
 }

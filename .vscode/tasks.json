@@ -56,6 +56,22 @@
       "args": [ "build", "${workspaceFolder}/07.helloworld.agent.agentsdk" ],
       "problemMatcher": "$msCompile",
       "group": "build"
+    },
+    {
+      "label": "build: foundry.agent.service.via.agent.sdk",
+      "command": "dotnet",
+      "type": "process",
+      "args": [ "build", "${workspaceFolder}/10.foundry.agent.service.via.agent.sdk" ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
+    },
+    {
+      "label": "build: foundry.agent.service.via.apim",
+      "command": "dotnet",
+      "type": "process",
+      "args": [ "build", "${workspaceFolder}/11.foundry.agent.service.via.apim" ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
     }
   ]
 }

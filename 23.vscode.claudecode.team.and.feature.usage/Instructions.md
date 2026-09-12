@@ -61,3 +61,9 @@ traces
 I can then see the tokens per developer per feature in the below image
 
 23.vscode.claudecode.team.and.feature.usage\01.AppInsights.TokensPerFeature.png
+
+
+## Notes & Interesting Articles
+
+https://code.claude.com/docs/en/analytics
+https://cld-docs.onlinetool.cc/en/docs/claude-code/monitoring-usage.html

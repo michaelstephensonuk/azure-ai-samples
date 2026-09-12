@@ -2,6 +2,8 @@
 bin/
 obj/
 
+.vs/
+
 # Local secrets — never commit real keys
 appsettings.json
 
@@ -9,3 +11,5 @@ appsettings.json
 !appsettings.template.json
 /ReadMe.Ideas.md
 /TODO.md
+/Deploy.md
+
