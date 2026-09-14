@@ -72,6 +72,14 @@
       "args": [ "build", "${workspaceFolder}/11.foundry.agent.service.via.apim" ],
       "problemMatcher": "$msCompile",
       "group": "build"
+    },
+    {
+      "label": "build: helloworld.agent.agentsdk.via.api.management",
+      "command": "dotnet",
+      "type": "process",
+      "args": [ "build", "${workspaceFolder}/09.helloworld.agent.agentsdk.via.api.management" ],
+      "problemMatcher": "$msCompile",
+      "group": "build"
     }
   ]
 }

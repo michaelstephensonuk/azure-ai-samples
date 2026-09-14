@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sample 11 — Foundry Agent Service via APIM</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; overflow-y: auto; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #1d4ed8; margin-bottom: 14px; }
+  h1 { font-size: 2.6rem; font-weight: 700; line-height: 1.15; color: #111827; text-align: center; }
+  h1 span.blue { color: #1d4ed8; }
+  h1 span.purple { color: #8250df; }
+  h1 span.green { color: #15803d; }
+  h1 span.orange { color: #b45309; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 24px; }
+  .subtitle { font-size: 1.05rem; color: #6b7280; margin-top: 16px; max-width: 680px; text-align: center; line-height: 1.6; }
+  p { font-size: 0.95rem; color: #6b7280; line-height: 1.7; max-width: 820px; }
+  .content { width: 100%; max-width: 960px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; border-bottom: 2px solid #e5e7eb; }
+  th.blue   { color: #1d4ed8; }
+  th.purple { color: #8250df; }
+  th.green  { color: #15803d; }
+  th.orange { color: #b45309; }
+  th.grey   { color: #6b7280; }
+  td { padding: 8px 10px; font-size: 0.82rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: top; }
+  td:first-child { color: #374151; font-weight: 600; white-space: nowrap; }
+  td code { font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.78rem; color: #0550ae; background:#f0f4ff; padding:1px 5px; border-radius:4px; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px 20px; font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.78rem; line-height: 1.6; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw { color: #cf222e; } .type { color: #0550ae; } .str { color: #0a3069; } .cmt { color: #6e7781; font-style: italic; } .mth { color: #8250df; } .hi { color: #1d4ed8; font-weight: 700; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.77rem; font-weight: 600; margin: 3px; }
+  .pill-blue   { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-purple { background: #f3e8ff; color: #7c3aed; border: 1px solid #c4b5fd; }
+  .pill-green  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .pill-orange { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .pill-grey   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; width: 100%; }
+  .cols-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; width: 100%; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+  .col-card { border-radius: 10px; padding: 18px 20px; }
+  .col-purple { background: #faf5ff; border: 2px solid #c4b5fd; }
+  .col-blue   { background: #eff6ff; border: 2px solid #93c5fd; }
+  .col-green  { background: #f0fdf4; border: 2px solid #86efac; }
+  .col-orange { background: #fffbeb; border: 2px solid #fcd34d; }
+  .col-grey   { background: #f9fafb; border: 2px solid #e5e7eb; }
+  .col-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 12px; }
+  .col-purple .col-title { color: #7c3aed; }
+  .col-blue   .col-title { color: #1d4ed8; }
+  .col-green  .col-title { color: #15803d; }
+  .col-orange .col-title { color: #b45309; }
+  .col-grey   .col-title { color: #374151; }
+  .col-item { font-size: 0.82rem; color: #374151; line-height: 1.55; margin-bottom: 6px; padding-left: 14px; position: relative; }
+  .col-item::before { content: '•'; position: absolute; left: 0; color: #9ca3af; }
+  .col-item.rm::before { content: '−'; color: #dc2626; font-weight: 700; }
+  .col-item.add::before { content: '+'; color: #16a34a; font-weight: 700; }
+
+  .callout { border-radius: 8px; padding: 10px 16px; font-size: 0.8rem; }
+  .callout-amber { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .callout-blue  { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout-green { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+  .callout-grey  { background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; }
+
+  .screenshot { max-width:100%; max-height:76vh; border-radius:10px; border:1px solid #d0d7de; box-shadow:0 4px 16px rgba(0,0,0,0.08); object-fit:contain; }
+  .shot-label { font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#374151; margin-bottom:8px; text-align:center; }
+
+  .loop-step { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
+  .ls-num { width: 28px; height: 28px; border-radius: 50%; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ls-text { font-size: 0.9rem; color: #6b7280; line-height: 1.55; }
+  .ls-text strong { color: #111827; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #1d4ed8; color: #1d4ed8; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #1d4ed8; }
+  .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 11</div>
+    <div class="tag">Foundry Agent Service · Agent SDK · via APIM</div>
+    <h1>Calling Foundry Agent Service<br/>through <span class="orange">API Management</span></h1>
+    <p class="subtitle">Same C# code as sample 10, routed through Azure API Management instead of calling Foundry directly — so requests can be logged and governed centrally, server-side.</p>
+    <div style="margin-top:36px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-grey">Sample 10 · Direct to Foundry</span>
+      <span class="pill pill-orange">Sample 11 · via APIM</span>
+      <span class="pill pill-blue">Subscription Key → Managed Identity</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: Overview / Aim -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Overview</div>
+      <h2>What sample 11 demonstrates</h2>
+      <div class="col-card col-blue" style="margin-bottom:18px;">
+        <div class="col-title">Goal</div>
+        <div class="col-item">Put <strong>API Management</strong> in front of the Foundry project endpoint so every call to the agent is logged centrally, server-side</div>
+        <div class="col-item">Keep the app's own code as close as possible to sample 10 — only the connection and auth need to change</div>
+        <div class="col-item">Flip the trust boundary: the console app never sees a real Foundry credential at all</div>
+      </div>
+      <div class="cols-3">
+        <div class="col-card col-grey">
+          <div class="col-title">Console App → APIM</div>
+          <div class="col-item">Authenticated with an APIM <strong>subscription key</strong> (<code>api-key</code> header)</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">APIM → Foundry</div>
+          <div class="col-item">Authenticated with APIM's own <strong>managed identity</strong></div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">RBAC role</div>
+          <div class="col-item">APIM's managed identity has <code>Foundry Agent Consumer</code> on the Foundry project</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Family tree -->
+  <div class="slide">
+    <div class="content" style="max-width:820px;">
+      <div class="tag">Sample Family</div>
+      <h2>Where sample 11 sits vs sample 10</h2>
+      <div class="two-col">
+        <div class="col-card col-grey">
+          <div class="col-title">10 · Direct to Foundry</div>
+          <div class="col-item"><code>AzureCliCredential</code> straight to the Foundry endpoint</div>
+          <div class="col-item">Dependencies logged by Foundry; no request-level logging at all</div>
+        </div>
+        <div class="col-card col-orange">
+          <div class="col-title">11 · Via APIM (this sample)</div>
+          <div class="col-item">APIM subscription key from the app; managed identity from APIM to Foundry</div>
+          <div class="col-item">Requests <em>and</em> dependencies both logged — centrally, in one place</div>
+        </div>
+      </div>
+      <div class="callout callout-blue" style="margin-top:20px;">
+        Same agent, same C# call shape — the only thing that moves is <em>where</em> authentication happens and <em>who</em> gets to see the traffic.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Linking APIM to Foundry -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Setup</div>
+      <h2 style="margin-bottom:14px;">How APIM was linked to Foundry</h2>
+      <div style="max-width:680px; margin:0 auto 16px;">
+        <div class="loop-step" style="margin-bottom:6px;"><div class="ls-num">1</div><div class="ls-text">Create an <strong>Application Insights</strong> resource (OTEL support, with a managed workspace)</div></div>
+        <div class="loop-step" style="margin-bottom:6px;"><div class="ls-num">2</div><div class="ls-text">Create an <strong>APIM</strong> instance (Consumption tier)</div></div>
+        <div class="loop-step" style="margin-bottom:6px;"><div class="ls-num">3</div><div class="ls-text">In Foundry, go to the <strong>AI Gateway</strong> settings and link it to the APIM instance</div></div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center;">
+        <div class="shot-label">Foundry AI Gateway → APIM link</div>
+        <img src="foundry-apim-gateway-link.png" alt="Foundry AI Gateway settings linked to the APIM instance" class="screenshot" style="max-height:58vh;" />
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Code diff vs sample 10 -->
+  <div class="slide">
+    <div class="content" style="max-width:940px;">
+      <div class="tag">Diff · vs Sample 10</div>
+      <h2>What changes in the C# code</h2>
+      <div class="two-col">
+        <div class="col-card col-grey">
+          <div class="col-title">Removed</div>
+          <div class="col-item rm"><code>AzureCliCredential</code> passed straight to <code>AIProjectClient</code></div>
+          <div class="col-item rm">Endpoint pointing at the Foundry resource directly</div>
+        </div>
+        <div class="col-card col-orange">
+          <div class="col-title">Added</div>
+          <div class="col-item add">Endpoint now points at the <strong>APIM gateway URL</strong></div>
+          <div class="col-item add">A raw <code>HttpClient</code> with an <code>ApiKeyAuthenticationPolicy</code> injecting the APIM <code>api-key</code> header</div>
+          <div class="col-item add">A no-op <code>AuthenticationTokenProvider</code> — <code>AIProjectClient</code> still requires one, even though real auth now happens at APIM</div>
+        </div>
+      </div>
+      <div class="callout callout-amber" style="margin-top:16px;">
+        The APIM link set up the API for us, but changed the expected header from the APIM default <code>Ocp-Apim-Subscription-Key</code> to <code>api-key</code> — worth checking your own instance's setting rather than assuming the default.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: Code comparison -->
+  <div class="slide">
+    <div class="content" style="max-width:980px;">
+      <div class="tag">Code Comparison</div>
+      <h2>Connecting to the agent — sample 10 vs sample 11</h2>
+      <div class="two-col" style="gap:16px;">
+        <div>
+          <div style="font-size:0.8rem; font-weight:700; color:#374151; margin-bottom:8px;">Sample 10 · Direct to Foundry</div>
+          <pre><span class="type">AIProjectClient</span> projectClient = <span class="kw">new</span>(
+    endpoint: <span class="kw">new</span> <span class="type">Uri</span>(endpoint),
+    tokenProvider: <span class="kw">new</span> <span class="type">AzureCliCredential</span>());</pre>
+        </div>
+        <div>
+          <div style="font-size:0.8rem; font-weight:700; color:#b45309; margin-bottom:8px;">Sample 11 · Via APIM</div>
+          <pre><span class="kw">var</span> httpClient = <span class="kw">new</span> <span class="type">HttpClient</span>();
+<span class="kw">var</span> options = <span class="kw">new</span> <span class="type">AIProjectClientOptions</span>
+{ Transport = <span class="kw">new</span> <span class="type">HttpClientPipelineTransport</span>(httpClient) };
+
+options.<span class="mth">AddPolicy</span>(
+  <span class="type">ApiKeyAuthenticationPolicy</span>.<span class="mth">CreateHeaderApiKeyPolicy</span>(
+    <span class="kw">new</span> <span class="type">ApiKeyCredential</span>(apimKey), <span class="str">"api-key"</span>, <span class="kw">null</span>),
+  <span class="type">PipelinePosition</span>.PerTry);
+
+<span class="type">AIProjectClient</span> projectClient = <span class="kw">new</span>(
+    endpoint: <span class="kw">new</span> <span class="type">Uri</span>(endpoint), <span class="cmt">// APIM gateway URL</span>
+    tokenProvider: <span class="kw">new</span> <span class="hi">NoOpTokenProvider</span>(),
+    options: options);</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Fixes needed in APIM - policy -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Fixes in APIM</div>
+      <h2>A couple of things the Foundry link didn't set up</h2>
+      <p style="margin-bottom:14px;">The backend itself was already created by the Foundry link — but the API's policy still needed to reference it explicitly:</p>
+      <pre>&lt;policies&gt;
+    &lt;inbound&gt;
+        &lt;base /&gt;
+        &lt;set-backend-service backend-id="ms-blog-ai-samples-foundry" /&gt;
+    &lt;/inbound&gt;
+    &lt;backend&gt;&lt;base /&gt;&lt;/backend&gt;
+    &lt;outbound&gt;&lt;base /&gt;&lt;/outbound&gt;
+    &lt;on-error&gt;&lt;base /&gt;&lt;/on-error&gt;
+&lt;/policies&gt;</pre>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Fixes needed in APIM - App Insights screenshot -->
+  <div class="slide">
+    <div class="content" style="max-width:960px; align-items:center; display:flex; flex-direction:column;">
+      <div class="tag">Fixes in APIM</div>
+      <h2 style="margin-bottom:16px;">App Insights logging had to be turned on explicitly</h2>
+      <img src="apim-app-insights.png" alt="APIM diagnostic settings with headers and payload logging enabled" class="screenshot" />
+      <p style="margin-top:14px; font-size:0.85rem;">Headers and payload logging aren't on by default — without this, requests would be logged but the custom headers wouldn't be captured.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: What gets logged now -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Observability</div>
+      <h2>Requests and dependencies, both logged centrally</h2>
+      <table style="margin-bottom:16px;">
+        <thead><tr><th class="grey">App Insights table</th><th class="grey">Source</th><th class="grey">Custom headers visible?</th></tr></thead>
+        <tbody>
+          <tr><td>requests</td><td>APIM</td><td style="color:#166534; font-weight:600;">Yes — every request to APIM</td></tr>
+          <tr><td>dependencies</td><td>Foundry</td><td style="color:#92400e; font-weight:600;">Only on the initial POST — not on downstream agent/tool spans</td></tr>
+        </tbody>
+      </table>
+      <div class="callout callout-amber">
+        You will <strong>not</strong> see custom headers inside Foundry itself. You'll see them on the <code>requests</code> row in APIM, and on the single <code>dependencies</code> row for the POST that triggered the agent — but not on the subsequent agent/tool telemetry that runs downstream and out of process.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: Correlation problem + KQL -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">Correlation</div>
+      <h2>Linking a request to its downstream agent telemetry</h2>
+      <p style="margin-bottom:14px;">Because custom headers don't propagate to the downstream agent/tool spans, correlating them means logging message bodies and joining on the response id: <code>gen_ai.response.id</code> on the dependency, matched to the response body's <code>id</code> on the request.</p>
+      <pre style="font-size:0.7rem;">let ai_response_id = "resp_...";
+union withsource=SourceTable requests, dependencies
+| where parse_json(tostring(customDimensions["Response-Body"])).id == ai_response_id
+    or customDimensions["gen_ai.response.id"] == ai_response_id
+| extend
+    Request_x_correlation_id_ = tostring(customDimensions["Request-x-correlation-id"]),
+    gen_ai_agent_name_ = tostring(customDimensions["gen_ai.agent.name"]),
+    ResponseBody = parse_json(tostring(customDimensions["Response-Body"]))
+| extend total_tokens_ = tolong(ResponseBody.usage.total_tokens)
+| project timestamp, SourceTable, Request_x_correlation_id_, gen_ai_agent_name_, total_tokens_
+| order by timestamp desc</pre>
+      <div class="callout callout-grey" style="margin-top:12px;">
+        Simpler standalone queries for just <code>requests</code> or just <code>dependencies</code> (without the correlation join) are in this sample's <code>Notes.md</code>.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 11: Outcome / Takeaways -->
+  <div class="slide">
+    <div class="content" style="max-width:880px;">
+      <div class="tag">Outcome</div>
+      <h2>Reflections after getting it working</h2>
+      <div class="two-col" style="margin-bottom:16px;">
+        <div class="col-card col-blue">
+          <div class="col-title">What worked</div>
+          <div class="col-item">The whole scenario works end to end — subscription key in, managed identity out, requests and dependencies both centrally logged</div>
+          <div class="col-item">Centralizing observability this way is genuinely valuable</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Still to think about</div>
+          <div class="col-item">Body-logging to correlate by response id is more involved than ideal — an APIM policy that promotes the response id to a header would be cleaner</div>
+          <div class="col-item">A standard header set may not fit every team — possibly multiple APIs per scenario, with some shared standards</div>
+          <div class="col-item">Distributed correlation across processes needs more thought — flowing standard headers like <code>traceparent</code> / <code>x-ms-correlation-id</code> end to end</div>
+        </div>
+      </div>
+      <div class="callout callout-grey">
+        Net effect: worth the extra setup for the centralization it buys, but the correlation story between the gateway and the downstream agent telemetry still has rough edges to smooth out.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 11</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dotsEl = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  let cur = 0;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => show(i);
+    dotsEl.appendChild(d);
+  });
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    dotsEl.children[cur].classList.remove('active');
+    cur = n;
+    slides[cur].classList.add('active');
+    dotsEl.children[cur].classList.add('active');
+    counter.textContent = (cur + 1) + ' / ' + slides.length;
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === slides.length - 1;
+  }
+
+  function go(d) { if (cur + d >= 0 && cur + d < slides.length) show(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+</script>
+</body>
+</html>

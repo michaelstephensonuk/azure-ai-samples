@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sample 10 — Foundry Agent Service via Agent SDK</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; overflow-y: auto; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #1d4ed8; margin-bottom: 14px; }
+  h1 { font-size: 2.6rem; font-weight: 700; line-height: 1.15; color: #111827; text-align: center; }
+  h1 span.blue { color: #1d4ed8; }
+  h1 span.purple { color: #8250df; }
+  h1 span.green { color: #15803d; }
+  h1 span.orange { color: #b45309; }
+  h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 24px; }
+  .subtitle { font-size: 1.05rem; color: #6b7280; margin-top: 16px; max-width: 680px; text-align: center; line-height: 1.6; }
+  p { font-size: 0.95rem; color: #6b7280; line-height: 1.7; max-width: 820px; }
+  .content { width: 100%; max-width: 960px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; border-bottom: 2px solid #e5e7eb; }
+  th.blue   { color: #1d4ed8; }
+  th.purple { color: #8250df; }
+  th.green  { color: #15803d; }
+  th.orange { color: #b45309; }
+  th.grey   { color: #6b7280; }
+  td { padding: 8px 10px; font-size: 0.82rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: top; }
+  td:first-child { color: #374151; font-weight: 600; white-space: nowrap; }
+  td code { font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.78rem; color: #0550ae; background:#f0f4ff; padding:1px 5px; border-radius:4px; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px 20px; font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.78rem; line-height: 1.6; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw { color: #cf222e; } .type { color: #0550ae; } .str { color: #0a3069; } .cmt { color: #6e7781; font-style: italic; } .mth { color: #8250df; } .hi { color: #1d4ed8; font-weight: 700; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.77rem; font-weight: 600; margin: 3px; }
+  .pill-blue   { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-purple { background: #f3e8ff; color: #7c3aed; border: 1px solid #c4b5fd; }
+  .pill-green  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .pill-orange { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .pill-grey   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; width: 100%; }
+  .cols-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; width: 100%; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+  .col-card { border-radius: 10px; padding: 18px 20px; }
+  .col-purple { background: #faf5ff; border: 2px solid #c4b5fd; }
+  .col-blue   { background: #eff6ff; border: 2px solid #93c5fd; }
+  .col-green  { background: #f0fdf4; border: 2px solid #86efac; }
+  .col-orange { background: #fffbeb; border: 2px solid #fcd34d; }
+  .col-grey   { background: #f9fafb; border: 2px solid #e5e7eb; }
+  .col-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 12px; }
+  .col-purple .col-title { color: #7c3aed; }
+  .col-blue   .col-title { color: #1d4ed8; }
+  .col-green  .col-title { color: #15803d; }
+  .col-orange .col-title { color: #b45309; }
+  .col-grey   .col-title { color: #374151; }
+  .col-item { font-size: 0.82rem; color: #374151; line-height: 1.55; margin-bottom: 6px; padding-left: 14px; position: relative; }
+  .col-item::before { content: '•'; position: absolute; left: 0; color: #9ca3af; }
+  .col-item.rm::before { content: '−'; color: #dc2626; font-weight: 700; }
+  .col-item.add::before { content: '+'; color: #16a34a; font-weight: 700; }
+
+  .callout { border-radius: 8px; padding: 10px 16px; font-size: 0.8rem; }
+  .callout-amber { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .callout-blue  { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout-green { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+  .callout-grey  { background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; }
+
+  .screenshot { max-width:100%; max-height:84vh; border-radius:10px; border:1px solid #d0d7de; box-shadow:0 4px 16px rgba(0,0,0,0.08); object-fit:contain; }
+  .shot-label { font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#374151; margin-bottom:8px; text-align:center; }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #1d4ed8; color: #1d4ed8; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #1d4ed8; }
+  .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 10</div>
+    <div class="tag">Foundry Agent Service · Agent SDK · Direct</div>
+    <h1>Calling a <span class="blue">Foundry Agent Service</span> agent<br/>via the <span class="purple">Agent SDK</span></h1>
+    <p class="subtitle">The agent's instructions, model and tools now live in Azure AI Foundry itself, not in this app. The app just references it by name + version and calls it directly with <code>Azure.AI.Projects</code>.</p>
+    <div style="margin-top:36px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-grey">05–09 · agent defined in code</span>
+      <span class="pill pill-blue">10 · agent defined in Foundry</span>
+      <span class="pill pill-green">~100 lines, 0 tools in code</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: Overview -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">Overview</div>
+      <h2>What sample 10 demonstrates</h2>
+      <div class="col-card col-blue" style="margin-bottom:18px;">
+        <div class="col-title">Goal</div>
+        <div class="col-item">Move the agent's definition out of the app entirely — create a <strong>prompt agent</strong> (using the Grok model) directly in Azure AI Foundry, and just reference it from code</div>
+        <div class="col-item">Call it with <code>AIProjectClient</code> / <code>ProjectResponsesClient</code> (<code>Azure.AI.Projects</code> / <code>Azure.AI.Extensions.OpenAI</code>) instead of building an <code>IChatClient</code> or <code>AIAgent</code> locally</div>
+        <div class="col-item">Authenticate with <code>AzureCliCredential</code> straight to the Foundry project endpoint — no APIM hop yet (that's sample 11)</div>
+        <div class="col-item">See what Application Insights captures automatically, with zero custom instrumentation code</div>
+      </div>
+      <div class="cols-3">
+        <div class="col-card col-grey">
+          <div class="col-title">Program.cs shape</div>
+          <div class="col-item">Config → build <code>AIProjectClient</code> → get a Responses client scoped to the agent → call it</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Key type</div>
+          <div class="col-item"><code>AgentReference(name, version)</code> — points at the agent Foundry already knows about</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">Entry point</div>
+          <div class="col-item"><code>responseClient.CreateResponseAsync(userPrompt)</code> → <code>ResponseResult</code></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: Family tree -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Sample Family</div>
+      <h2>A new axis: who owns the agent definition</h2>
+      <div class="two-col">
+        <div class="col-card col-grey">
+          <div class="col-title">05–09 · Hello World family</div>
+          <div class="col-item">Agent instructions, model &amp; tools defined <strong>in the app's own code</strong></div>
+          <div class="col-item"><code>IChatClient</code> (ME.AI) or <code>AIAgent</code> (MAF), optionally via APIM</div>
+          <div class="col-item">Every variant still talks to a raw Azure OpenAI deployment</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">10–11 · Foundry Agent Service family</div>
+          <div class="col-item">Agent created and versioned <strong>inside Azure AI Foundry</strong>, not in code</div>
+          <div class="col-item">App just supplies a name + version via <code>AgentReference</code></div>
+          <div class="col-item">10 = direct to Foundry · 11 = same call routed through APIM</div>
+        </div>
+      </div>
+      <div class="callout callout-blue" style="margin-top:20px;">
+        This is a different kind of change to the 05→09 series: instead of swapping SDKs or adding a gateway, the agent itself moves out of the codebase and into a managed Foundry resource.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Creating the agent in Foundry -->
+  <div class="slide">
+    <div class="content" style="max-width:1400px;">
+      <div class="tag">Step 1</div>
+      <h2 style="margin-bottom:12px;">Create the agent in Azure AI Foundry</h2>
+      <p style="margin-bottom:12px; font-size:0.85rem;">A <strong>prompt agent</strong> was created directly in the Foundry portal — model, instructions and version all live here, not in Program.cs.</p>
+      <div class="two-col">
+        <div style="display:flex; flex-direction:column; align-items:center;">
+          <div class="shot-label">Agent overview</div>
+          <img src="foundry-agent.png" alt="Foundry Agent Service showing the created prompt agent" class="screenshot" style="max-height:72vh;" />
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center;">
+          <div class="shot-label">Agent details</div>
+          <img src="foundry-agent-details.png" alt="Foundry agent details showing model, instructions and version" class="screenshot" style="max-height:72vh;" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Calling it via the Agent SDK -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Step 2</div>
+      <h2>Calling the agent from C#</h2>
+      <pre><span class="type">AIProjectClient</span> projectClient = <span class="kw">new</span>(
+    endpoint: <span class="kw">new</span> <span class="type">Uri</span>(endpoint),
+    tokenProvider: <span class="kw">new</span> <span class="type">AzureCliCredential</span>());
+
+<span class="cmt">// Points at an agent Foundry already knows about — no model,</span>
+<span class="cmt">// instructions or tools declared here at all.</span>
+<span class="type">AgentReference</span> agentReference =
+    <span class="kw">new</span>(name: agentName, version: agentVersion);
+
+<span class="type">ProjectResponsesClient</span> responseClient =
+    projectClient.<span class="hi">OpenAI</span>.<span class="mth">GetProjectResponsesClientForAgent</span>(agentReference);
+
+<span class="type">ResponseResult</span> response =
+    <span class="kw">await</span> responseClient.<span class="mth">CreateResponseAsync</span>(userPrompt);</pre>
+      <div class="callout callout-blue" style="margin-top:16px;">
+        Endpoint shape: <code>https://&lt;your-foundry&gt;.services.ai.azure.com/api/projects/&lt;your-project&gt;</code>. In production this would use <code>DefaultAzureCredential</code> so a deployed app picks up its managed identity; <code>AzureCliCredential</code> is used here for local dev.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: Custom headers gotcha -->
+  <div class="slide">
+    <div class="content" style="max-width:880px;">
+      <div class="tag">Step 3 · Gotcha</div>
+      <h2>Sending custom headers — they go nowhere useful</h2>
+      <p style="margin-bottom:16px;">Custom headers can be added by wiring a raw <code>HttpClient</code> into the SDK's transport, and they <em>do</em> get sent on the wire. But calling Foundry directly means there's no intermediary logging the request — so those headers never show up anywhere in Application Insights.</p>
+      <div class="callout callout-amber">
+        <strong>Takeaway:</strong> without a gateway in front of Foundry, there's nowhere server-side to capture request-level metadata like a correlation id or customer id — that's the gap sample 11 exists to close.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: What gets logged -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Observability</div>
+      <h2>What gets logged out of the box</h2>
+      <table style="margin-bottom:16px;">
+        <thead><tr><th class="grey">App Insights table</th><th class="grey">Logged?</th><th class="grey">Notes</th></tr></thead>
+        <tbody>
+          <tr><td>dependencies</td><td style="color:#166534; font-weight:600;">Yes</td><td>Foundry itself emits <code>gen_ai.*</code> dependency spans for the call and the agent's model usage</td></tr>
+          <tr><td>requests</td><td style="color:#dc2626; font-weight:600;">No</td><td>No gateway/API in front of Foundry to record an inbound request</td></tr>
+          <tr><td>traces</td><td style="color:#dc2626; font-weight:600;">No</td><td>Same reason — nothing server-side to log custom trace events or headers</td></tr>
+        </tbody>
+      </table>
+      <pre style="font-size:0.72rem;">dependencies
+| where type == "AI" and data == "chat"
+| where customDimensions.["microsoft.foundry"] == "True"
+| where customDimensions.["gen_ai.agent.name"] &lt;&gt; ""
+| extend
+    gen_ai_agent_name_ = tostring(customDimensions.["gen_ai.agent.name"]),
+    gen_ai_request_model_ = tostring(customDimensions.["gen_ai.request.model"]),
+    gen_ai_usage_input_tokens_ = tostring(customDimensions.["gen_ai.usage.input_tokens"]),
+    gen_ai_usage_output_tokens_ = tostring(customDimensions.["gen_ai.usage.output_tokens"])
+| project timestamp, gen_ai_agent_name_, gen_ai_request_model_,
+    gen_ai_usage_input_tokens_, gen_ai_usage_output_tokens_, name, success, duration
+| order by timestamp desc</pre>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Screenshot -->
+  <div class="slide">
+    <div class="content" style="max-width:1300px; align-items:center; display:flex; flex-direction:column;">
+      <div class="tag">App Insights · Screenshot</div>
+      <h2 style="margin-bottom:16px;">Dependency spans captured by Foundry</h2>
+      <img src="appinsights-dependencies.png" alt="Application Insights dependencies showing Foundry agent calls with gen_ai token usage" class="screenshot" />
+    </div>
+  </div>
+
+  <!-- SLIDE 9: Outcome / Takeaways -->
+  <div class="slide">
+    <div class="content" style="max-width:860px;">
+      <div class="tag">Outcome</div>
+      <h2>What works, what's missing</h2>
+      <div class="two-col" style="margin-bottom:18px;">
+        <div class="col-card col-blue">
+          <div class="col-title">What works</div>
+          <div class="col-item">Calling a Foundry-hosted agent directly from C# with a small amount of code</div>
+          <div class="col-item">Token usage and model calls automatically show up in <code>dependencies</code>, with zero instrumentation</div>
+        </div>
+        <div class="col-card col-grey">
+          <div class="col-title">What's missing</div>
+          <div class="col-item">No custom headers or correlation ids visible anywhere — nothing logs <code>requests</code> or <code>traces</code></div>
+          <div class="col-item">Client-side logging could patch this over, but it wouldn't be centralized</div>
+        </div>
+      </div>
+      <div class="callout callout-grey">
+        Next: sample 11 routes the same call through <strong>API Management</strong>, so requests get logged centrally — including the custom headers this sample couldn't capture.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 9</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dotsEl = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  let cur = 0;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => show(i);
+    dotsEl.appendChild(d);
+  });
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    dotsEl.children[cur].classList.remove('active');
+    cur = n;
+    slides[cur].classList.add('active');
+    dotsEl.children[cur].classList.add('active');
+    counter.textContent = (cur + 1) + ' / ' + slides.length;
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === slides.length - 1;
+  }
+
+  function go(d) { if (cur + d >= 0 && cur + d < slides.length) show(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+</script>
+</body>
+</html>

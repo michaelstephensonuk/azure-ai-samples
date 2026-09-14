@@ -99,6 +99,17 @@
       "cwd": "${workspaceFolder}/11.foundry.agent.service.via.apim",
       "console": "integratedTerminal",
       "stopAtEntry": false
+    },
+    {
+      "name": "helloworld.agent.agentsdk.via.api.management",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: helloworld.agent.agentsdk.via.api.management",
+      "program": "${workspaceFolder}/09.helloworld.agent.agentsdk.via.api.management/bin/Debug/net10.0/helloworld.agent.agentsdk.via.api.management.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/09.helloworld.agent.agentsdk.via.api.management",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
     }
   ]
 }
