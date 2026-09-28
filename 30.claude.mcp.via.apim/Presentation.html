@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Claude Code MCP via APIM &amp; Entra ID</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #ffffff; color: #111827; height: 100vh; overflow: hidden; user-select: none; }
+  .deck { width: 100%; height: 100vh; position: relative; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 80px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; overflow-y: auto; }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .tag { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #1d4ed8; margin-bottom: 14px; }
+  h1 { font-size: 2.3rem; font-weight: 700; line-height: 1.18; color: #111827; text-align: center; }
+  h1 span.blue   { color: #1d4ed8; }
+  h1 span.purple { color: #8250df; }
+  h1 span.green  { color: #15803d; }
+  h1 span.orange { color: #b45309; }
+  h2 { font-size: 1.7rem; font-weight: 600; color: #111827; margin-bottom: 22px; }
+  .subtitle { font-size: 1.05rem; color: #6b7280; margin-top: 16px; max-width: 700px; text-align: center; line-height: 1.6; }
+  p { font-size: 0.95rem; color: #6b7280; line-height: 1.7; max-width: 860px; }
+  .content { width: 100%; max-width: 1000px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 7px 9px; border-bottom: 2px solid #e5e7eb; }
+  th.blue   { color: #1d4ed8; }
+  th.purple { color: #8250df; }
+  th.green  { color: #15803d; }
+  th.orange { color: #b45309; }
+  th.grey   { color: #6b7280; }
+  td { padding: 7px 9px; font-size: 0.78rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: top; }
+  td:first-child { color: #374151; font-weight: 600; white-space: nowrap; }
+  td code { font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.74rem; color: #0550ae; background:#f0f4ff; padding:1px 5px; border-radius:4px; }
+
+  pre { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 14px 18px; font-family: 'Cascadia Code','Fira Code','Consolas',monospace; font-size: 0.74rem; line-height: 1.6; overflow-x: auto; color: #24292f; width: 100%; }
+  .kw  { color: #cf222e; }
+  .key { color: #0550ae; }
+  .str { color: #0a3069; }
+  .cmt { color: #6e7781; font-style: italic; }
+  .hi  { color: #1d4ed8; font-weight: 700; }
+
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.77rem; font-weight: 600; margin: 3px; }
+  .pill-blue   { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pill-purple { background: #f3e8ff; color: #7c3aed; border: 1px solid #c4b5fd; }
+  .pill-green  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .pill-orange { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .pill-grey   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; width: 100%; }
+  .cols-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; width: 100%; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+  .col-card { border-radius: 10px; padding: 16px 18px; }
+  .col-purple { background: #faf5ff; border: 2px solid #c4b5fd; }
+  .col-blue   { background: #eff6ff; border: 2px solid #93c5fd; }
+  .col-green  { background: #f0fdf4; border: 2px solid #86efac; }
+  .col-orange { background: #fffbeb; border: 2px solid #fcd34d; }
+  .col-grey   { background: #f9fafb; border: 2px solid #e5e7eb; }
+  .col-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 10px; }
+  .col-purple .col-title { color: #7c3aed; }
+  .col-blue   .col-title { color: #1d4ed8; }
+  .col-green  .col-title { color: #15803d; }
+  .col-orange .col-title { color: #b45309; }
+  .col-grey   .col-title { color: #374151; }
+  .col-item { font-size: 0.8rem; color: #374151; line-height: 1.5; margin-bottom: 6px; padding-left: 14px; position: relative; }
+  .col-item::before { content: '•'; position: absolute; left: 0; color: #9ca3af; }
+  .col-item.num { padding-left: 22px; }
+  .col-item.num::before { content: attr(data-n); font-weight: 700; color: #1d4ed8; left: 0; }
+
+  .callout { border-radius: 8px; padding: 10px 16px; font-size: 0.8rem; }
+  .callout-amber  { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .callout-blue   { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout-green  { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+  .callout-grey   { background: #f9fafb; border: 1px solid #e5e7eb; color: #374151; }
+  .callout-purple { background: #faf5ff; border: 1px solid #c4b5fd; color: #6b21a8; }
+  .callout-red    { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+
+  .flow { display: flex; align-items: center; gap: 0; width: 100%; flex-wrap: nowrap; margin: 16px 0; }
+  .flow-box { background: #eff6ff; border: 2px solid #93c5fd; border-radius: 8px; padding: 10px 14px; font-size: 0.78rem; font-weight: 600; color: #1d4ed8; text-align: center; flex: 1; }
+  .flow-box.green  { background: #f0fdf4; border-color: #86efac; color: #15803d; }
+  .flow-box.purple { background: #faf5ff; border-color: #c4b5fd; color: #7c3aed; }
+  .flow-box.orange { background: #fffbeb; border-color: #fcd34d; color: #b45309; }
+  .flow-box.grey   { background: #f9fafb; border-color: #e5e7eb; color: #374151; }
+  .flow-arrow { font-size: 1.2rem; color: #9ca3af; padding: 0 6px; flex-shrink: 0; }
+
+  .shot { max-width: 100%; max-height: 260px; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+
+  nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; background: #ffffffee; backdrop-filter: blur(8px); padding: 10px 24px; border-radius: 40px; border: 1px solid #e5e7eb; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  nav button { background: none; border: 1px solid #d0d7de; color: #6b7280; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  nav button:hover { border-color: #1d4ed8; color: #1d4ed8; }
+  nav button:disabled { opacity: 0.25; cursor: default; }
+  #counter { color: #6b7280; font-size: 0.88rem; min-width: 50px; text-align: center; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #d0d7de; cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #1d4ed8; }
+  .badge { display: inline-block; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 12px; border-radius: 20px; letter-spacing: 0.05em; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active">
+    <div class="badge">Sample 30</div>
+    <div class="tag">Claude Code · Azure API Management · Entra ID · MCP</div>
+    <h1><span class="purple">Claude Code</span> MCP Servers,<br/><span class="blue">secured via APIM</span> + Entra ID</h1>
+    <p class="subtitle">Connecting Claude Code to Pipedrive and a custom application through Azure API Management as an MCP proxy — authenticated end-to-end with Entra ID, not a bespoke auth layer.</p>
+    <div style="margin-top:36px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <span class="pill pill-purple">Claude Code</span>
+      <span class="pill pill-blue">Azure API Management</span>
+      <span class="pill pill-green">Entra ID</span>
+      <span class="pill pill-orange">OAuth 2.0 + PKCE</span>
+      <span class="pill pill-grey">Model Context Protocol</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: Why watch this -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Why Watch This</div>
+      <h2>What you'll walk away with</h2>
+      <div class="cols-3">
+        <div class="col-card col-purple">
+          <div class="col-title">A working pattern</div>
+          <div class="col-item">How to expose APIs already published in APIM as Entra-secured MCP servers, without writing a custom auth server</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">The workaround, explained</div>
+          <div class="col-item">Why a thin proxy layer in front of Entra is needed when the MCP endpoint and the identity provider live on different domains</div>
+        </div>
+        <div class="col-card col-green">
+          <div class="col-title">Every gotcha, up front</div>
+          <div class="col-item">Public client flags, role assignment, scope encoding — the specific failures we hit building this, so you don't rediscover them</div>
+        </div>
+      </div>
+      <div class="callout callout-blue" style="margin-top:18px;">
+        In short: this is the exact set of pieces (App registration, two APIM policy sets, one JSON block) needed to go from "Claude Code" to "Claude Code, authenticated with my org's Entra tenant."
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: The aim -->
+  <div class="slide">
+    <div class="content">
+      <div class="tag">The Aim</div>
+      <h2>Two goals, one constraint</h2>
+      <div class="two-col">
+        <div class="col-card col-purple">
+          <div class="col-title">What I wanted</div>
+          <div class="col-item">Claude Code in VS Code, connected to MCP servers for Pipedrive and a custom application</div>
+          <div class="col-item">Those connectors secured with Entra authentication — not an API key alone</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">The approach</div>
+          <div class="col-item">Use APIM as a proxy in front of APIs that already exist</div>
+          <div class="col-item">Register that APIM instance as the MCP source in <code>.mcp.json</code></div>
+          <div class="col-item">Authenticate to APIM with Entra, end to end</div>
+        </div>
+      </div>
+      <div class="callout callout-amber" style="margin-top:18px;">
+        The constraint that drives the rest of this deck: Claude Code's OAuth discovery expects the MCP endpoint and its authorization server to agree on one origin — but the endpoint lives in APIM and the identity provider is Entra. That mismatch is what §"Entra Auth Workaround" exists to fix.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: Architecture overview -->
+  <div class="slide">
+    <div class="content" style="max-width:980px;">
+      <div class="tag">Architecture Overview</div>
+      <h2>One request, five hops</h2>
+      <pre>Claude Code (.mcp.json, OAuth client)
+        │
+        │ 1. GET /.well-known/oauth-protected-resource/pipedrive-copilot-mcp-server/mcp
+        │ 2. GET  {authorization_servers}/.well-known/openid-configuration
+        │ 3. GET  /oauth-proxy/authorize   (redirect, resource param stripped)
+        │ 4. POST /oauth-proxy/token       (code exchange, resource param stripped)
+        │ 5. POST /pipedrive-mcp-server/mcp   (Authorization: Bearer &lt;token&gt;)
+        ▼
+Azure API Management — api-kv-sales-marketing
+  ├─ oauth-proxy                              (Entra OAuth proxy)
+  ├─ well-known-oauth-protected-resource       (RFC 9728 metadata)
+  ├─ pipedrive-mcp-server (type: mcp)  (validates token, exposes tools)
+  └─ pipedrive-api            (backend REST API, per-tool policies)
+        │
+        ▼
+Azure Function App: pipedrive-api-helper  (calls the real Pipedrive API)</pre>
+      <div class="callout callout-blue" style="margin-top:14px;">
+        Steps 1–4 are pure OAuth discovery and login — they happen once (or on token refresh). Step 5 is every actual tool call, and it's the only hop that touches real data.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Auth deep dive -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">Authentication, Deeper Dive</div>
+      <h2>Who's the client, who's the backend</h2>
+      <pre>Claude Code (.mcp.json, oauth section)
+        │  OAuth 2.0 Authorization Code + PKCE, loopback redirect (localhost:8080)
+        ▼
+Entra ID (tenant)
+   App registration (public client)
+        │  issues access_token + refresh_token
+        │  (scopes: openid, offline_access, api://.../user_impersonation)
+        ▼
+APIM "oauth-proxy" API  (transparent proxy — /authorize, /token, /.well-known/*)
+        │  rewrites requests to Entra's real endpoints, forwards responses untouched
+        ▼
+login.microsoftonline.com/{tenant}/oauth2/v2.0/{authorize|token}</pre>
+      <div class="callout callout-green" style="margin-top:14px;">
+        Once Claude Code holds a bearer token, it calls the MCP tool endpoints directly — both the token (Entra-issued) <strong>and</strong> an <code>Ocp-Apim-Subscription-Key</code> header are required. The subscription key is an optional second layer; Entra is the real security boundary.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: The problem -->
+  <div class="slide">
+    <div class="content" style="max-width:900px;">
+      <div class="tag">The Problem</div>
+      <h2>Auth happens with Entra, but MCP is hosted in APIM</h2>
+      <div class="col-card col-orange" style="margin-bottom:14px;">
+        <div class="col-item">MCP clients query the RFC 9728 discovery document unconditionally — if it 404s, some clients don't fail cleanly, they silently retry discovery forever and never attempt the real call</div>
+        <div class="col-item">The <code>resource</code> field must exactly equal the URL the client is calling (its own origin + path) — clients validate this themselves and reject any deviation, including pointing it at the Entra app identifier instead</div>
+        <div class="col-item"><code>authorization_servers</code> must point at a proxy in front of Entra, not at <code>login.microsoftonline.com</code> directly — otherwise the client tries to authorize against a domain that doesn't own the resource it's calling</div>
+      </div>
+      <div class="callout callout-red">
+        The fix isn't "authenticate with Entra instead of APIM" — it's building two small proxy APIs inside APIM so that, from the client's point of view, discovery, login, and the MCP call all appear to come from the same origin.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: Building block 1 - discovery document -->
+  <div class="slide">
+    <div class="content" style="max-width:940px;">
+      <div class="tag">Workaround · 1 of 2</div>
+      <h2>The RFC 9728 discovery document</h2>
+      <div class="two-col">
+        <div>
+          <div class="col-card col-purple" style="margin-bottom:10px;">
+            <div class="col-title">New APIM API</div>
+            <div class="col-item">Path <code>.well-known/oauth-protected-resource</code></div>
+            <div class="col-item">One wildcard operation <code>GET /{*resourcePath}</code>, no real backend needed</div>
+            <div class="col-item">One instance serves every MCP server on the same APIM — build it once</div>
+          </div>
+        </div>
+        <pre>string resourcePath = (string)context
+  .Request.MatchedParameters["resourcePath"];
+string gatewayOrigin = "https://"
+  + context.Request.OriginalUrl.Host;
+<span class="kw">return new</span> JObject(
+  <span class="kw">new</span> JProperty(<span class="str">"resource"</span>,
+    gatewayOrigin + <span class="str">"/"</span> + resourcePath),
+  <span class="kw">new</span> JProperty(<span class="str">"authorization_servers"</span>,
+    <span class="kw">new</span> JArray(gatewayOrigin + <span class="str">"/oauth-proxy"</span>)),
+  <span class="kw">new</span> JProperty(<span class="str">"bearer_methods_supported"</span>,
+    <span class="kw">new</span> JArray(<span class="str">"header"</span>))
+).ToString();</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: Building block 2 - oauth proxy -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">Workaround · 2 of 2</div>
+      <h2>The Entra OAuth proxy</h2>
+      <table>
+        <thead>
+          <tr><th class="grey">Operation</th><th class="blue">Route</th><th class="purple">Job</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Discovery</td><td><code>GET /.well-known/openid-configuration</code></td><td>Fetch Entra's real discovery doc, rewrite <code>authorization_endpoint</code> &amp; <code>token_endpoint</code> to point at this proxy</td></tr>
+          <tr><td>Authorize</td><td><code>GET /authorize</code></td><td>302 to Entra's real <code>/authorize</code>, stripping <code>resource</code></td></tr>
+          <tr><td>Token</td><td><code>POST /token</code></td><td>Forward to Entra's real <code>/token</code>, stripping <code>resource</code> from the form body</td></tr>
+        </tbody>
+      </table>
+      <div class="callout callout-amber" style="margin-top:16px;">
+        <strong>Gotcha:</strong> the <code>scope</code> query parameter needs its <code>+</code> characters replaced with real spaces before forwarding — query strings don't treat <code>+</code> as space the way form bodies do. Skip it and a second scope makes Entra reject the whole request with <code>AADSTS65005</code>. Same logic strips <code>resource</code> from both the <code>authorization_code</code> and <code>refresh_token</code> grants in <code>/token</code>.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: Entra app registration -->
+  <div class="slide">
+    <div class="content" style="max-width:940px;">
+      <div class="tag">1 · Entra ID App Registration</div>
+      <h2>One public client, shared by every MCP server</h2>
+      <table>
+        <thead>
+          <tr><th class="grey">Property</th><th class="blue">Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Sign-in audience</td><td><code>AzureADMyOrg</code> (single tenant)</td></tr>
+          <tr><td>Public client fallback</td><td><code>true</code> — required for PKCE with no client secret</td></tr>
+          <tr><td>Redirect URIs (Mobile and desktop apps)</td><td><code>http://localhost:8080/callback</code>, <code>http://localhost</code></td></tr>
+          <tr><td>API permissions</td><td>Microsoft Graph <code>User.Read</code> (delegated)</td></tr>
+        </tbody>
+      </table>
+      <div class="callout callout-red" style="margin-top:14px;">
+        <strong>Gotcha — must be a public client:</strong> skipping this produces <code>AADSTS7000218: The request body must contain the following parameter: 'client_assertion' or 'client_secret'</code>, which reads nothing like a "public client" problem. Not reliably settable via <code>az ad app update</code> — set <code>isFallbackPublicClient: true</code> via a Graph <code>PATCH</code> instead. Also: register the redirect URI under <strong>Mobile and desktop applications</strong>, not SPA — SPA uses a stricter, short-lived refresh-token model that breaks a CLI client.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: Roles & enterprise app -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">2 &amp; 3 · App Roles &amp; Enterprise App</div>
+      <h2>Define the role, then remember to assign it</h2>
+      <div class="two-col">
+        <div>
+          <div class="col-card col-purple" style="margin-bottom:10px;">
+            <div class="col-title">App roles</div>
+            <div class="col-item">One app role per permission group, e.g. <code>mcp.myapp.read</code></div>
+            <div class="col-item">Authorization downstream is checked against the <code>roles</code> claim on the token</div>
+          </div>
+          <img class="shot" src="images/entra.appreg.roles.image1.png" alt="Entra app registration roles" />
+        </div>
+        <div>
+          <div class="col-card col-orange" style="margin-bottom:10px;">
+            <div class="col-title">Enterprise app — assign the role</div>
+            <div class="col-item">Being able to sign in is a separate thing from holding the role</div>
+            <div class="col-item">Assign via Enterprise Application → Users and groups</div>
+          </div>
+          <img class="shot" src="images/entra.enterprise.app.users.image1.png" alt="Entra enterprise app users and groups" />
+        </div>
+      </div>
+      <div class="callout callout-amber" style="margin-top:14px;">
+        It's easy to build every other piece correctly and forget this step — the symptom looks like a "stuck" client-side auth flow, when it's really an unassigned role.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 11: .mcp.json -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">4 · Claude Code Side</div>
+      <h2><code>.mcp.json</code> — pointing Claude Code at APIM</h2>
+      <pre>{
+  <span class="str">"mcpServers"</span>: {
+    <span class="str">"apim-mcp-pipedrive"</span>: {
+      <span class="str">"type"</span>: <span class="str">"http"</span>,
+      <span class="str">"url"</span>: <span class="str">"https://mikes-apim.azure-api.net/pipedrive-mcp-server/mcp"</span>,
+      <span class="str">"headers"</span>: { <span class="str">"Ocp-Apim-Subscription-Key"</span>: <span class="str">"[Subscription-Key-Here]"</span> },
+      <span class="str">"oauth"</span>: {
+        <span class="str">"clientId"</span>: <span class="str">"[App-Reg-Client-ID-Here]"</span>,
+        <span class="str">"callbackPort"</span>: 8080,
+        <span class="str">"authServerMetadataUrl"</span>: <span class="str">"https://mikes-apim.azure-api.net/oauth-proxy/.well-known/openid-configuration"</span>,
+        <span class="str">"scopes"</span>: <span class="str">"openid offline_access api://[App-Reg-Client-ID-Here]/user_impersonation"</span>
+      }
+    }
+    <span class="cmt">// Other MCP servers would go here — same app registration, same oauth-proxy</span>
+  }
+}</pre>
+      <div class="callout callout-blue" style="margin-top:14px;">
+        <code>callbackPort: 8080</code> must match the <code>http://localhost:8080/callback</code> redirect URI registered in Entra — Claude Code runs a loopback listener on that port during interactive login (<code>/mcp</code>).
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 12: APIM policies -->
+  <div class="slide">
+    <div class="content" style="max-width:940px;">
+      <div class="tag">5 &amp; 6 · APIM Policies</div>
+      <h2>Token validation at two layers, on purpose</h2>
+      <div class="two-col">
+        <div class="col-card col-blue">
+          <div class="col-title">API layer (<code>pipedrive-api</code>)</div>
+          <div class="col-item">Rejects requests with no bearer token before touching <code>validate-azure-ad-token</code></div>
+          <div class="col-item">Validates audience + required <code>roles</code> claim, logs <code>userId</code>/<code>userName</code>/<code>scope</code> to App Insights</div>
+          <div class="col-item">Strips the <code>Authorization</code> header before forwarding to the backend</div>
+          <div class="col-item">Honoured even for callers that hit the API directly, not via MCP</div>
+        </div>
+        <div class="col-card col-purple">
+          <div class="col-title">MCP layer (<code>pipedrive-mcp-server</code>)</div>
+          <div class="col-item">Same <code>validate-azure-ad-token</code> shape, deliberately duplicated</div>
+          <div class="col-item">Lets the MCP surface require a different claim, or stay Entra-secured even if the underlying API's auth changes later</div>
+        </div>
+      </div>
+      <div class="callout callout-grey" style="margin-top:14px;">
+        Tools exposed by the MCP server are picked from the API's operations in the APIM MCP configuration screen, then this policy is attached at the MCP layer.
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 13: Using it end to end -->
+  <div class="slide">
+    <div class="content" style="max-width:960px;">
+      <div class="tag">Using It</div>
+      <h2>From registered server to authenticated tool call</h2>
+      <div class="flow">
+        <div class="flow-box purple">1. Review .mcp.json<br/>servers are registered</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box blue">2. Run /mcp<br/>click Authenticate</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box green">3. Browser round-trip<br/>Entra login → redirected back</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box orange">4. Prompt → tool call<br/>hits the MCP server</div>
+      </div>
+      <div class="two-col" style="margin-top:10px;">
+        <img class="shot" src="images/vscode.mcp.image1.png" alt="mcp.json with registered MCP servers" />
+        <img class="shot" src="images/vscode.mcp.image2.png" alt="Authenticating the MCP server in VS Code" />
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 14: Practical takeaways -->
+  <div class="slide">
+    <div class="content" style="max-width:920px;">
+      <div class="tag">Practical Takeaways</div>
+      <h2>What to get right the first time</h2>
+      <div class="col-card col-orange" style="margin-bottom:14px;">
+        <div class="col-item num" data-n="1.">The wildcard discovery API is written once and serves <strong>every</strong> MCP server on the APIM instance — no per-server copy needed</div>
+        <div class="col-item num" data-n="2.">Mark the app registration as a <strong>public client</strong> and register redirect URIs under <strong>Mobile and desktop applications</strong>, not SPA or Web</div>
+        <div class="col-item num" data-n="3.">Assigning the app role in the <strong>Enterprise Application</strong> is a separate step from creating it — skip it and the failure looks like a client-side auth bug</div>
+        <div class="col-item num" data-n="4.">Never log request/response bodies in the token proxy beyond a one-off debug trace — they carry live authorization codes and tokens; delete the trace the moment it's confirmed working</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 15: Summary -->
+  <div class="slide">
+    <div class="content" style="max-width:880px;">
+      <div class="tag">Summary</div>
+      <h2>Same Entra token, all the way down</h2>
+      <div class="cols-3">
+        <div class="col-card col-purple">
+          <div class="col-title">What this achieves</div>
+          <div class="col-item">Claude Code authenticates once with Entra</div>
+          <div class="col-item">That identity is honoured at the MCP layer and the API layer</div>
+        </div>
+        <div class="col-card col-blue">
+          <div class="col-title">Security model</div>
+          <div class="col-item">Entra is the real boundary — roles claim gates access</div>
+          <div class="col-item">Subscription key is an optional second layer</div>
+        </div>
+        <div class="col-card col-green">
+          <div class="col-title">Reusability</div>
+          <div class="col-item">One app registration, one oauth-proxy, one discovery API — shared across every MCP server added later</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" onclick="go(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <span id="counter">1 / 15</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</nav>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dotsEl = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  let cur = 0;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => show(i);
+    dotsEl.appendChild(d);
+  });
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    dotsEl.children[cur].classList.remove('active');
+    cur = n;
+    slides[cur].classList.add('active');
+    dotsEl.children[cur].classList.add('active');
+    counter.textContent = (cur + 1) + ' / ' + slides.length;
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === slides.length - 1;
+  }
+
+  function go(d) { if (cur + d >= 0 && cur + d < slides.length) show(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+</script>
+</body>
+</html>
