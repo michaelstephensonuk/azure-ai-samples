@@ -14,6 +14,9 @@
 
 ## Architecture Overview
 
+![Architecture](images/architecture.image1.png)
+
+
 ```
 Claude Code (.mcp.json, OAuth client)
         │
